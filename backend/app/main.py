@@ -18,6 +18,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def on_startup():
+    Base.metadata.create_all(bind=engine)
 
 @app.get("/health")
 def health_check():
@@ -30,3 +33,15 @@ def generate(payload: GenerateRequest):
     if not flashcards:
         raise HTTPException(status_code=422, detail="Unable to generate valid flashcards from AI response.")
     return {"flashcards": flashcards}
+
+@app.post("/flashcards", response_model=list[FlashcardOut])
+def save_flashcards(payload: list[FlashcardCreate], db: Session = Depends(get_db)):
+    rows: list[Flashcard] = []
+    for card in payload:
+        row = Flashcard(question=card.question, answer=card.answer)
+        db.add(row)
+        rows.append(row)
+    db.commit()
+    for row in rows:
+        db.refresh(row)
+    return rows
