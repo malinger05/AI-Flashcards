@@ -48,7 +48,7 @@ def save_flashcards(payload: list[FlashcardCreate], db: Session = Depends(get_db
         db.refresh(row)
     return rows
 
-
+#fetch function for flashcards
 @app.get("/flashcards", response_model=list[FlashcardOut])
 def get_flashcards(db: Session = Depends(get_db)):
     return db.query(Flashcard).order_by(Flashcard.created_at.desc()).all()

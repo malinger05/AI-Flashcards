@@ -1,8 +1,7 @@
 from sqlalchemy import Column, DateTime, Integer, String, func
 
 from .db import Base
-
-
+#fetch function for flashcards updated.
 class Flashcard(Base):
     __tablename__ = "flashcards"
 
