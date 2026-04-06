@@ -45,24 +45,6 @@ def _coerce_flashcards(data: Any) -> list[dict[str, str]]:
     return valid_cards
 
 
-def _extract_json(content: str) -> Any:
-    content = content.strip()
-    if not content:
-        return {}
-
-    # Handle code-fenced responses: ```json ... ```
-    if "```" in content:
-        start = content.find("{")
-        end = content.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            content = content[start : end + 1]
-
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return {}
-
-
 def generate_flashcards(text: str) -> list[dict[str, str]]:
     ollama_base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
@@ -93,3 +75,21 @@ def generate_flashcards(text: str) -> list[dict[str, str]]:
     content = parsed_body.get("message", {}).get("content", "") if isinstance(parsed_body, dict) else ""
     parsed = _extract_json(content)
     return _coerce_flashcards(parsed)
+
+
+def _extract_json(content: str) -> Any:
+    content = content.strip()
+    if not content:
+        return {}
+
+    # Handle code-fenced responses: ```json ... ```
+    if "```" in content:
+        start = content.find("{")
+        end = content.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            content = content[start : end + 1]
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {}
