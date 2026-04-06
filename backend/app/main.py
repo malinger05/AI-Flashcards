@@ -10,6 +10,7 @@ from .schemas import FlashcardCreate, FlashcardOut, GenerateRequest
 
 app = FastAPI(title="AI Flashcard Generator API")
 
+# Allow fronted to call backend (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
