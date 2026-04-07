@@ -57,6 +57,8 @@ def generate_flashcards(text: str) -> list[dict[str, str]]:
                     # Avoid str.format on JSON braces in the prompt template.
                     {"role": "user", "content": PROMPT_TEMPLATE.replace("{text}", text)},
                 ],
+                # Ask Ollama to force JSON output when supported.
+                "format": "json",
                 "stream": False,
                 "options": {"temperature": 0.2},
             }
