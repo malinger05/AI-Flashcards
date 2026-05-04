@@ -2,15 +2,14 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .ai import generate_flashcards
-from .db import Base, engine, get_db
-from .models import Flashcard
-from .schemas import FlashcardCreate, FlashcardOut, GenerateRequest
+from ai import generate_flashcards
+from db import Base, engine, get_db
+from models import Flashcard
+from schemas import FlashcardCreate, FlashcardOut, GenerateRequest
 
 
 app = FastAPI(title="AI Flashcard Generator API")
 
-# Allow fronted to call backend (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,6 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 def on_startup():
@@ -31,9 +31,12 @@ def health_check():
 
 @app.post("/generate")
 def generate(payload: GenerateRequest):
-    flashcards = generate_flashcards(payload.text)
-    if not flashcards:
-        raise HTTPException(status_code=422, detail="Unable to generate valid flashcards from AI response.")
+    try:
+        flashcards = generate_flashcards(payload.text)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
     return {"flashcards": flashcards}
 
 
@@ -49,7 +52,7 @@ def save_flashcards(payload: list[FlashcardCreate], db: Session = Depends(get_db
         db.refresh(row)
     return rows
 
-#fetch function for flashcards
+
 @app.get("/flashcards", response_model=list[FlashcardOut])
 def get_flashcards(db: Session = Depends(get_db)):
     return db.query(Flashcard).order_by(Flashcard.created_at.desc()).all()

@@ -4,9 +4,8 @@ from urllib import error, request
 from typing import Any
 
 
-PROMPT_TEMPLATE = """
-You are a flashcard generator for students.
-Return ONLY valid JSON with this exact shape:
+PROMPT_TEMPLATE = """You are a flashcard generator for students.
+Return ONLY valid JSON with this exact shape — no markdown, no explanation, nothing else:
 {
   "flashcards": [
     {
@@ -17,14 +16,14 @@ Return ONLY valid JSON with this exact shape:
 }
 
 Rules:
-- Generate 5-10 flashcards based on the text.
-- Questions must be clear and short.
-- Answers must be factual and concise.
-- No markdown, no extra text, no explanations outside JSON.
+- Generate between 8 and 12 flashcards based on the text.
+- Questions must be clear, specific, and short (one sentence).
+- Answers must be factual and concise (one or two sentences max).
+- Cover the most important concepts in the text.
+- No markdown inside question/answer strings.
 
-Text:
-{text}
-""".strip()
+Text to generate flashcards from:
+{text}"""
 
 
 def _coerce_flashcards(data: Any) -> list[dict[str, str]]:
@@ -39,44 +38,10 @@ def _coerce_flashcards(data: Any) -> list[dict[str, str]]:
         if not isinstance(card, dict):
             continue
         question = str(card.get("question", "")).strip()
-        answer = str(card.get("answer", "")).strip()
+        answer   = str(card.get("answer",   "")).strip()
         if question and answer:
             valid_cards.append({"question": question, "answer": answer})
     return valid_cards
-
-
-def generate_flashcards(text: str) -> list[dict[str, str]]:
-    ollama_base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
-
-    try:
-        payload = {
-                "model": ollama_model,
-                "messages": [
-                    {"role": "system", "content": "You create study flashcards from student notes."},
-                    # Avoid str.format on JSON braces in the prompt template.
-                    {"role": "user", "content": PROMPT_TEMPLATE.replace("{text}", text)},
-                ],
-                # Ask Ollama to force JSON output when supported.
-                "format": "json",
-                "stream": False,
-                "options": {"temperature": 0.2},
-            }
-        req = request.Request(
-            url=f"{ollama_base}/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with request.urlopen(req, timeout=60) as response:
-            body = response.read().decode("utf-8")
-    except (error.URLError, TimeoutError, ValueError):
-        return []
-
-    parsed_body = _extract_json(body)
-    content = parsed_body.get("message", {}).get("content", "") if isinstance(parsed_body, dict) else ""
-    parsed = _extract_json(content)
-    return _coerce_flashcards(parsed)
 
 
 def _extract_json(content: str) -> Any:
@@ -84,14 +49,84 @@ def _extract_json(content: str) -> Any:
     if not content:
         return {}
 
-    # Handle code-fenced responses: ```json ... ```
+    # Strip markdown code fences if present
     if "```" in content:
         start = content.find("{")
-        end = content.rfind("}")
+        end   = content.rfind("}")
         if start != -1 and end != -1 and end > start:
-            content = content[start : end + 1]
+            content = content[start: end + 1]
 
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        return {}
+        pass
+
+    # Fallback: find outermost { } braces
+    start = content.find("{")
+    end   = content.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(content[start: end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    return {}
+
+
+def generate_flashcards(text: str) -> list[dict[str, str]]:
+    ollama_base  = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL",    "llama3.2")
+
+    prompt = PROMPT_TEMPLATE.replace("{text}", text)
+
+    payload = {
+        "model": ollama_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful assistant that ONLY outputs valid JSON. "
+                    "Never include markdown, code fences, or any text outside the JSON object."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        "format":  "json",
+        "stream":  False,
+        "options": {"temperature": 0.3, "num_predict": 2048},
+    }
+
+    try:
+        req = request.Request(
+            url=f"{ollama_base}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with request.urlopen(req, timeout=120) as response:
+            body = response.read().decode("utf-8")
+    except (error.URLError, TimeoutError, ValueError) as exc:
+        raise RuntimeError(
+            f"Could not reach Ollama at {ollama_base}. "
+            f"Make sure Ollama is running and '{ollama_model}' is pulled. "
+            f"Run: ollama pull {ollama_model}"
+        ) from exc
+
+    parsed_body = _extract_json(body)
+    if not isinstance(parsed_body, dict):
+        raise RuntimeError("Ollama returned an unexpected response format.")
+
+    content = parsed_body.get("message", {}).get("content", "")
+    if not content:
+        raise RuntimeError("Ollama returned an empty response. Try with more detailed notes.")
+
+    parsed = _extract_json(content)
+    cards  = _coerce_flashcards(parsed)
+
+    if not cards:
+        raise RuntimeError(
+            "AI response did not contain valid flashcards. "
+            "Make sure your notes have enough content and try again."
+        )
+
+    return cards
