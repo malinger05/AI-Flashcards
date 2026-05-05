@@ -25,7 +25,7 @@ class UserSession(Base):
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
-
+    #correct_count and wrong_count are new columns
     id            = Column(Integer, primary_key=True, index=True)
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     question      = Column(String, nullable=False)

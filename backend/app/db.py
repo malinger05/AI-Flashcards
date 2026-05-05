@@ -18,7 +18,7 @@ def get_db():
     finally:
         db.close()
 
-
+# flashcards table, correct_count and wrong_count are new columns if not there
 def run_migrations():
     """Safely add any new columns to existing tables without data loss."""
     with engine.connect() as conn:
