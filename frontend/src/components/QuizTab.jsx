@@ -414,7 +414,7 @@ export default function QuizTab({ savedCards }) {
           fontWeight: 600,
         }}
       >
-        Press Enter to submit · Enter again for next card
+        Press Enter to submit · Enter again to navigate to the next question
       </p>
     </div>
   );
