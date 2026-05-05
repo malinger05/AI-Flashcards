@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { API_BASE } from "../constants";
+import { apiFetch } from "../constants";
 
 export default function QuizTab({ savedCards }) {
-  // phases: "setup" | "question" | "feedback" | "summary"
   const [phase, setPhase] = useState("setup");
   const [count, setCount] = useState(10);
   const [useSelected, setUseSelected] = useState(false);
@@ -17,7 +16,6 @@ export default function QuizTab({ savedCards }) {
   const [feedback, setFeedback] = useState(null);
   const [isLast, setIsLast] = useState(false);
   const [summary, setSummary] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -51,9 +49,8 @@ export default function QuizTab({ savedCards }) {
     setErr("");
     try {
       const ids = useSelected && selectedIds.size > 0 ? [...selectedIds] : [];
-      const res = await fetch(`${API_BASE}/quiz/start`, {
+      const res = await apiFetch("/quiz/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ flashcard_ids: ids, count }),
       });
       const data = await res.json();
@@ -78,9 +75,8 @@ export default function QuizTab({ savedCards }) {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch(`${API_BASE}/quiz/answer`, {
+      const res = await apiFetch("/quiz/answer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId, user_answer: answer }),
       });
       const data = await res.json();
@@ -99,7 +95,7 @@ export default function QuizTab({ savedCards }) {
     if (isLast) {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/quiz/${sessionId}/summary`);
+        const res = await apiFetch(`/quiz/${sessionId}/summary`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Could not load summary.");
         setSummary(data);
@@ -113,7 +109,7 @@ export default function QuizTab({ savedCards }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/quiz/${sessionId}/next`);
+      const res = await apiFetch(`/quiz/${sessionId}/next`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not load next card.");
       setQuestion(data.question);
@@ -145,7 +141,6 @@ export default function QuizTab({ savedCards }) {
         )
       : 0;
 
-  // ── SETUP ──────────────────────────────────────
   if (phase === "setup")
     return (
       <div className="tab-pane center-pane">
@@ -157,7 +152,6 @@ export default function QuizTab({ savedCards }) {
             <br />
             Cards you miss more often appear more frequently.
           </p>
-
           <div className="quiz-count-row">
             <label htmlFor="qcount">Cards to quiz:</label>
             <select
@@ -173,7 +167,6 @@ export default function QuizTab({ savedCards }) {
               ))}
             </select>
           </div>
-
           {savedCards.length > 0 && (
             <div style={{ marginBottom: "1.25rem" }}>
               <label
@@ -250,7 +243,6 @@ export default function QuizTab({ savedCards }) {
               )}
             </div>
           )}
-
           {err && <p className="msg-err">{err}</p>}
           <button
             className="btn btn-teal lg"
@@ -282,7 +274,6 @@ export default function QuizTab({ savedCards }) {
       </div>
     );
 
-  // ── SUMMARY ────────────────────────────────────
   if (phase === "summary" && summary) {
     const pct = summary.score_pct;
     return (
@@ -332,7 +323,6 @@ export default function QuizTab({ savedCards }) {
     );
   }
 
-  // ── QUESTION / FEEDBACK ────────────────────────
   return (
     <div className="tab-pane">
       <div className="smeta">
@@ -343,7 +333,6 @@ export default function QuizTab({ savedCards }) {
       <div className="prog">
         <div className="progf" style={{ width: `${progressPct}%` }} />
       </div>
-
       <div className="quiz-card-panel">
         <p
           style={{
@@ -358,7 +347,6 @@ export default function QuizTab({ savedCards }) {
           Question {cardIndex + 1}
         </p>
         <p className="quiz-q">{question}</p>
-
         <div className="quiz-input-row">
           <input
             ref={inputRef}
@@ -379,9 +367,7 @@ export default function QuizTab({ savedCards }) {
             </button>
           )}
         </div>
-
         {err && <p className="msg-err">{err}</p>}
-
         {phase === "feedback" && feedback && (
           <div
             className={`feedback-box ${feedback.correct ? "correct" : "wrong"}`}
@@ -401,7 +387,6 @@ export default function QuizTab({ savedCards }) {
             )}
           </div>
         )}
-
         {phase === "feedback" && (
           <button
             className="btn btn-teal"

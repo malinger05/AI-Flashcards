@@ -1,28 +1,16 @@
-const LS_USERS = "fc_users";
-const LS_CUR = "fc_current_user";
+// Only the study session history stays in localStorage now.
+// User auth is token-based (token in localStorage, data in DB).
 
-export function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(LS_USERS) || "[]");
-  } catch {
-    return [];
-  }
+export function getToken() {
+  return localStorage.getItem("fc_token");
 }
-export function saveUsers(u) {
-  localStorage.setItem(LS_USERS, JSON.stringify(u));
+export function setToken(t) {
+  localStorage.setItem("fc_token", t);
 }
-export function getCurrent() {
-  try {
-    return JSON.parse(localStorage.getItem(LS_CUR) || "null");
-  } catch {
-    return null;
-  }
+export function clearToken() {
+  localStorage.removeItem("fc_token");
 }
-export function setCurrent(u) {
-  u
-    ? localStorage.setItem(LS_CUR, JSON.stringify(u))
-    : localStorage.removeItem(LS_CUR);
-}
+
 export function getHistory(userId) {
   try {
     return JSON.parse(localStorage.getItem(`fc_history_${userId}`) || "[]");

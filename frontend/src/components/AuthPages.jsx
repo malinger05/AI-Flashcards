@@ -1,30 +1,55 @@
 import { useState } from "react";
-import { getUsers, saveUsers } from "../utils/storage";
+import { API_BASE } from "../constants";
+import { setToken } from "../utils/storage";
+
+function AuthRight({ question, title, subtitle, dotOn }) {
+  return (
+    <div className="auth-right">
+      <div className="auth-right-inner">
+        <div className="rcp-stack">
+          <div className="rcp rcp1" />
+          <div className="rcp rcp2" />
+          <div className="rcp rcp3">
+            <div className="rcp3-txt">{question}</div>
+          </div>
+        </div>
+        <h2 style={{ marginTop: "1.75rem" }}>{title}</h2>
+        <p>{subtitle}</p>
+        <div className="rdots">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`rdot${dotOn === i ? " on" : ""}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function LoginPage({ onLogin, goReg }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    const trimEmail = email.trim().toLowerCase();
-    const trimPass = pass.trim();
-    if (!trimEmail) return setErr("Please enter your email.");
-    if (!trimPass) return setErr("Please enter your password.");
-
-    const users = getUsers();
-    const found = users.find(
-      (u) => u.email.toLowerCase() === trimEmail && u.password === trimPass,
-    );
-    if (!found) {
-      if (!users.find((u) => u.email.toLowerCase() === trimEmail))
-        return setErr(
-          "No account found with that email. Please register first.",
-        );
-      return setErr("Incorrect password. Please try again.");
+    setErr("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password: pass }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed.");
+      setToken(data.token);
+      onLogin(data.user);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
     }
-    onLogin(found);
   }
 
   return (
@@ -69,8 +94,8 @@ export function LoginPage({ onLogin, goReg }) {
                 autoComplete="current-password"
               />
             </div>
-            <button type="submit" className="btn-submit">
-              Sign in →
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? "Signing in…" : "Sign in →"}
             </button>
           </form>
           <p className="auth-switch">
@@ -80,27 +105,12 @@ export function LoginPage({ onLogin, goReg }) {
             </button>
           </p>
         </div>
-        <div className="auth-right">
-          <div className="auth-right-inner">
-            <div className="rcp-stack">
-              <div className="rcp rcp1" />
-              <div className="rcp rcp2" />
-              <div className="rcp rcp3">
-                <div className="rcp3-txt">What is osmosis?</div>
-              </div>
-            </div>
-            <h2 style={{ marginTop: "1.75rem" }}>Study smarter</h2>
-            <p>
-              Paste your notes — AI turns them into perfect flashcards
-              instantly.
-            </p>
-            <div className="rdots">
-              <div className="rdot on" />
-              <div className="rdot" />
-              <div className="rdot" />
-            </div>
-          </div>
-        </div>
+        <AuthRight
+          question="What is osmosis?"
+          title="Study smarter"
+          subtitle="Paste your notes — AI turns them into perfect flashcards instantly."
+          dotOn={0}
+        />
       </div>
     </div>
   );
@@ -111,32 +121,31 @@ export function RegisterPage({ onLogin, goLogin }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    const trimName = name.trim();
-    const trimEmail = email.trim().toLowerCase();
-    const trimPass = pass.trim();
-    if (!trimName) return setErr("Please enter your name.");
-    if (!trimEmail) return setErr("Please enter your email.");
-    if (!trimEmail.includes("@"))
-      return setErr("Please enter a valid email address.");
-    if (trimPass.length < 6)
-      return setErr("Password must be at least 6 characters.");
-
-    const users = getUsers();
-    if (users.find((u) => u.email.toLowerCase() === trimEmail))
-      return setErr("An account with this email already exists.");
-
-    const newUser = {
-      id: Date.now(),
-      name: trimName,
-      email: trimEmail,
-      password: trimPass,
-      saved: [],
-    };
-    saveUsers([...users, newUser]);
-    onLogin(newUser);
+    setErr("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password: pass,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Registration failed.");
+      setToken(data.token);
+      onLogin(data.user);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -194,8 +203,8 @@ export function RegisterPage({ onLogin, goLogin }) {
                 autoComplete="new-password"
               />
             </div>
-            <button type="submit" className="btn-submit">
-              Create account →
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? "Creating account…" : "Create account →"}
             </button>
           </form>
           <p className="auth-switch">
@@ -205,27 +214,12 @@ export function RegisterPage({ onLogin, goLogin }) {
             </button>
           </p>
         </div>
-        <div className="auth-right">
-          <div className="auth-right-inner">
-            <div className="rcp-stack">
-              <div className="rcp rcp1" />
-              <div className="rcp rcp2" />
-              <div className="rcp rcp3">
-                <div className="rcp3-txt">What is mitosis?</div>
-              </div>
-            </div>
-            <h2 style={{ marginTop: "1.75rem" }}>Learn anything</h2>
-            <p>
-              Flip cards, track your score, save your progress — all in one
-              place.
-            </p>
-            <div className="rdots">
-              <div className="rdot" />
-              <div className="rdot on" />
-              <div className="rdot" />
-            </div>
-          </div>
-        </div>
+        <AuthRight
+          question="What is mitosis?"
+          title="Learn anything"
+          subtitle="Flip cards, track your score, save your progress — all in one place."
+          dotOn={1}
+        />
       </div>
     </div>
   );

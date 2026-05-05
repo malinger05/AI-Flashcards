@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API_BASE } from "../constants";
+import { apiFetch } from "../constants";
 
 export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
   const [notes, setNotes] = useState("");
@@ -13,9 +13,8 @@ export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
     setErr("");
     setOk("");
     try {
-      const res = await fetch(`${API_BASE}/generate`, {
+      const res = await apiFetch("/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: notes }),
       });
       const data = await res.json();
@@ -83,8 +82,7 @@ export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
         <div className="panel">
           <div className="panel-head">
             <div className="panel-title">
-              <span className="step">2</span>
-              {gen.length} cards generated
+              <span className="step">2</span> {gen.length} cards generated{" "}
               <span className="pill">{gen.length}</span>
             </div>
             <div className="row">

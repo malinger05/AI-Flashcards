@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { getUsers, saveUsers, setCurrent, getHistory } from "../utils/storage";
+import { apiFetch } from "../constants";
+import { getHistory, addSession } from "../utils/storage";
 import GenerateTab from "./GenerateTab";
 import StudyTab from "./StudyTab";
 import QuizTab from "./QuizTab";
@@ -7,15 +8,26 @@ import SavedTab from "./SavedTab";
 
 export default function MainApp({ user, onLogout }) {
   const [tab, setTab] = useState("generate");
-  const [saved, setSaved] = useState(
-    () => getUsers().find((u) => u.id === user.id)?.saved || [],
-  );
+  const [saved, setSaved] = useState([]);
   const [gen, setGen] = useState([]);
   const [customStudy, setCustomStudy] = useState(null);
   const [ddOpen, setDdOpen] = useState(false);
-  const [modal, setModal] = useState(null); // "profile" | "history" | null
+  const [modal, setModal] = useState(null);
+  const [loadingCards, setLoadingCards] = useState(true);
   const ddRef = useRef(null);
 
+  // Load saved flashcards from DB on mount
+  useEffect(() => {
+    apiFetch("/flashcards")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSaved(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCards(false));
+  }, []);
+
+  // Close dropdown on outside click
   useEffect(() => {
     function handler(e) {
       if (ddRef.current && !ddRef.current.contains(e.target)) setDdOpen(false);
@@ -24,22 +36,33 @@ export default function MainApp({ user, onLogout }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  function persistSaved(cards) {
-    setSaved(cards);
-    const users = getUsers();
-    const idx = users.findIndex((u) => u.id === user.id);
-    if (idx > -1) {
-      users[idx].saved = cards;
-      saveUsers(users);
-      setCurrent(users[idx]);
+  // Save generated cards to DB
+  async function persistSaved(cards) {
+    try {
+      const res = await apiFetch("/flashcards", {
+        method: "POST",
+        body: JSON.stringify(
+          cards.map((c) => ({ question: c.question, answer: c.answer })),
+        ),
+      });
+      const saved = await res.json();
+      if (Array.isArray(saved)) setSaved((prev) => [...saved, ...prev]);
+    } catch (e) {
+      console.error("Failed to save flashcards", e);
     }
+  }
+
+  // Refresh saved list from DB (called after save)
+  async function refreshSaved() {
+    const res = await apiFetch("/flashcards");
+    const data = await res.json();
+    if (Array.isArray(data)) setSaved(data);
   }
 
   function startCustomStudy(cards) {
     setCustomStudy(cards);
     setTab("study");
   }
-
   function switchTab(t) {
     if (t !== "study") setCustomStudy(null);
     setTab(t);
@@ -56,7 +79,7 @@ export default function MainApp({ user, onLogout }) {
 
   return (
     <div className="app-shell" onClick={() => setDdOpen(false)}>
-      {/* ── TOP BAR ── */}
+      {/* TOP BAR */}
       <header className="topbar">
         <div className="tb-left">
           <div className="tb-bs">
@@ -129,22 +152,16 @@ export default function MainApp({ user, onLogout }) {
         </div>
       </header>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN CONTENT */}
       <main className="content">
         {tab === "generate" && (
           <GenerateTab
             gen={gen}
             setGen={setGen}
-            onSave={(cards) =>
-              persistSaved([
-                ...cards.map((c) => ({
-                  ...c,
-                  id: Date.now() + Math.random(),
-                  saved_at: new Date().toISOString(),
-                })),
-                ...saved,
-              ])
-            }
+            onSave={async (cards) => {
+              await persistSaved(cards);
+              await refreshSaved();
+            }}
             onStudy={() => switchTab("study")}
           />
         )}
@@ -158,25 +175,37 @@ export default function MainApp({ user, onLogout }) {
           />
         )}
         {tab === "quiz" && <QuizTab savedCards={saved} />}
-        {tab === "saved" && (
-          <SavedTab
-            cards={saved}
-            onStudySelected={startCustomStudy}
-            onExport={() => {
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(
-                new Blob([JSON.stringify(saved, null, 2)], {
-                  type: "application/json",
-                }),
-              );
-              a.download = "flashcards.json";
-              a.click();
-            }}
-          />
-        )}
+        {tab === "saved" &&
+          (loadingCards ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "4rem",
+                color: "var(--ink3)",
+                fontWeight: 700,
+              }}
+            >
+              Loading cards…
+            </div>
+          ) : (
+            <SavedTab
+              cards={saved}
+              onStudySelected={startCustomStudy}
+              onExport={() => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(
+                  new Blob([JSON.stringify(saved, null, 2)], {
+                    type: "application/json",
+                  }),
+                );
+                a.download = "flashcards.json";
+                a.click();
+              }}
+            />
+          ))}
       </main>
 
-      {/* ── PROFILE MODAL ── */}
+      {/* PROFILE MODAL */}
       {modal === "profile" && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -231,7 +260,7 @@ export default function MainApp({ user, onLogout }) {
         </div>
       )}
 
-      {/* ── HISTORY MODAL ── */}
+      {/* HISTORY MODAL */}
       {modal === "history" && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -311,8 +340,8 @@ export default function MainApp({ user, onLogout }) {
                               />
                             </div>
                             <div className="sess-meta">
-                              ✓ {s.correct} correct &nbsp;·&nbsp; ✗ {s.wrong}{" "}
-                              wrong &nbsp;·&nbsp; {s.total} total
+                              ✓ {s.correct} correct · ✗ {s.wrong} wrong ·{" "}
+                              {s.total} total
                             </div>
                           </div>
                         </div>
