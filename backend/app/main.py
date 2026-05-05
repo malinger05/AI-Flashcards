@@ -19,7 +19,8 @@ app = FastAPI(title="AI Flashcard Generator API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Dev frontend runs on localhost/127.0.0.1 with changing Vite ports.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
