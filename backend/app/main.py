@@ -4,11 +4,11 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from ai import generate_flashcards
-from auth import generate_token, hash_password, verify_password
-from db import Base, engine, get_db, run_migrations
-from models import Flashcard, QuizSession, User, UserSession
-from schemas import (
+from .ai import generate_flashcards
+from .auth import generate_token, hash_password, verify_password
+from .db import Base, engine, get_db, run_migrations
+from .models import Flashcard, QuizSession, User, UserSession
+from .schemas import (
     AnswerRequest, AnswerResult, AuthResponse,
     FlashcardCreate, FlashcardOut, GenerateRequest,
     LoginRequest, QuizCardOut, QuizStartRequest,
@@ -19,7 +19,8 @@ app = FastAPI(title="AI Flashcard Generator API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Dev frontend runs on localhost/127.0.0.1 with changing Vite ports.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -133,6 +134,7 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
         all_cards = db.query(Flashcard).filter(Flashcard.user_id == current_user.id).all()
         if not all_cards:
             raise HTTPException(status_code=404, detail="No flashcards saved yet.")
+        # Favor cards the user got wrong more often.
         weights = [max(1, c.wrong_count + 1) for c in all_cards]
         k       = min(payload.count, len(all_cards))
         cards   = random.choices(all_cards, weights=weights, k=k)
@@ -166,6 +168,7 @@ def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
     user_ans = payload.user_answer.strip().lower()
     correct_ans = card.answer.strip().lower()
+    # Keep answer check forgiving for small wording differences.
     is_correct = user_ans == correct_ans or correct_ans in user_ans or user_ans in correct_ans
 
 #correct_count and wrong_count are new and added to the quiz_answer function
