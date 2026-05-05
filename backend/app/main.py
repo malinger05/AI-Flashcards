@@ -134,6 +134,7 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
         all_cards = db.query(Flashcard).filter(Flashcard.user_id == current_user.id).all()
         if not all_cards:
             raise HTTPException(status_code=404, detail="No flashcards saved yet.")
+        # Favor cards the user got wrong more often.
         weights = [max(1, c.wrong_count + 1) for c in all_cards]
         k       = min(payload.count, len(all_cards))
         cards   = random.choices(all_cards, weights=weights, k=k)
@@ -167,6 +168,7 @@ def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
     user_ans = payload.user_answer.strip().lower()
     correct_ans = card.answer.strip().lower()
+    # Keep answer check forgiving for small wording differences.
     is_correct = user_ans == correct_ans or correct_ans in user_ans or user_ans in correct_ans
 
     if is_correct: card.correct_count += 1; session.correct_count += 1
