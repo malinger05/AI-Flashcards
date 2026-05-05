@@ -4,11 +4,11 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from ai import generate_flashcards
-from auth import generate_token, hash_password, verify_password
-from db import Base, engine, get_db, run_migrations
-from models import Flashcard, QuizSession, User, UserSession
-from schemas import (
+from .ai import generate_flashcards
+from .auth import generate_token, hash_password, verify_password
+from .db import Base, engine, get_db, run_migrations
+from .models import Flashcard, QuizSession, User, UserSession
+from .schemas import (
     AnswerRequest, AnswerResult, AuthResponse,
     FlashcardCreate, FlashcardOut, GenerateRequest,
     LoginRequest, QuizCardOut, QuizStartRequest,
