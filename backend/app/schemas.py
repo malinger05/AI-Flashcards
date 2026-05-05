@@ -41,6 +41,7 @@ class FlashcardBase(BaseModel):
 class FlashcardCreate(FlashcardBase):
     pass
 
+#correct_count and wrong_count are new and added to the schema (response API)
 class FlashcardOut(FlashcardBase):
     id:            int
     correct_count: int

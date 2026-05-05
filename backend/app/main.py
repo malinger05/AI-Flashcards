@@ -168,6 +168,7 @@ def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current
     correct_ans = card.answer.strip().lower()
     is_correct = user_ans == correct_ans or correct_ans in user_ans or user_ans in correct_ans
 
+#correct_count and wrong_count are new and added to the quiz_answer function
     if is_correct: card.correct_count += 1; session.correct_count += 1
     else:          card.wrong_count   += 1; session.wrong_count   += 1
 
