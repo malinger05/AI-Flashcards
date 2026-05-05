@@ -81,6 +81,7 @@ export default function QuizTab({ savedCards }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not submit answer.");
+      // AnswerResult includes correct_answer for the feedback panel after submit.
       setFeedback(data);
       setIsLast(data.is_last);
       setPhase("feedback");
@@ -375,15 +376,13 @@ export default function QuizTab({ savedCards }) {
             <p className="feedback-verdict">
               {feedback.correct ? "✓ Correct!" : "✗ Not quite"}
             </p>
+            <p className="feedback-ans">
+              <strong>Correct answer:</strong> {feedback.correct_answer}
+            </p>
             {!feedback.correct && (
-              <>
-                <p className="feedback-ans">
-                  <strong>Correct answer:</strong> {feedback.correct_answer}
-                </p>
-                <p className="feedback-ans" style={{ marginTop: 4 }}>
-                  <strong>Your answer:</strong> {feedback.user_answer}
-                </p>
-              </>
+              <p className="feedback-ans" style={{ marginTop: 4 }}>
+                <strong>Your answer:</strong> {feedback.user_answer}
+              </p>
             )}
           </div>
         )}
