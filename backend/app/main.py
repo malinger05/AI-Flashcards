@@ -191,7 +191,7 @@ def quiz_next(session_id: int, current_user: User = Depends(get_current_user), d
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
 
     return QuizCardOut(session_id=session.id, card_index=idx, total_cards=len(card_ids), flashcard_id=card.id, question=card.question)
-
+#The GET /quiz/{session_id}/summary endpoint calculates and returns the score_pct, correct_count, and wrong_count values.
 @app.get("/quiz/{session_id}/summary", response_model=QuizSummary)
 def quiz_summary(session_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     session = db.query(QuizSession).filter(QuizSession.id == session_id, QuizSession.user_id == current_user.id).first()
