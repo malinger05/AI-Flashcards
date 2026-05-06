@@ -39,7 +39,7 @@ class FlashcardBase(BaseModel):
 class FlashcardCreate(FlashcardBase):
     pass
 
-#correct_count and wrong_count are new and added to the schema (response API)
+# SCRUM-49: Expose performance counters so UI can show results and/or saved-card stats.
 class FlashcardOut(FlashcardBase):
     id:            int
     correct_count: int
