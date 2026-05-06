@@ -1,26 +1,30 @@
+import json
+import os
 import random
+from difflib import SequenceMatcher
+from urllib import request, error
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from difflib import SequenceMatcher
 
 from .ai import generate_flashcards
 from .auth import generate_token, hash_password, verify_password
 from .db import Base, engine, get_db, run_migrations
-from .models import Flashcard, QuizSession, User, UserSession
+from .models import Flashcard, QuizSession, User, UserSession, StudySession, StudySessionResult
 from .schemas import (
     AnswerRequest, AnswerResult, AuthResponse,
     FlashcardCreate, FlashcardOut, GenerateRequest,
     LoginRequest, QuizCardOut, QuizStartRequest,
     QuizSummary, RegisterRequest, UserOut,
+    StudySessionCreate, StudySessionOut,
+    StudySessionResultOut,
 )
 
 app = FastAPI(title="AI Flashcard Generator API")
 
 app.add_middleware(
     CORSMiddleware,
-    # Dev frontend runs on localhost/127.0.0.1 with changing Vite ports.
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
@@ -31,6 +35,48 @@ app.add_middleware(
 def on_startup():
     Base.metadata.create_all(bind=engine)
     run_migrations()
+
+
+def check_answer_with_ai(user_answer: str, correct_answer: str) -> bool:
+    ollama_base  = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+
+    payload = {
+        "model": ollama_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a strict but fair quiz evaluator. You only reply with YES or NO, nothing else.",
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Correct answer: {correct_answer}\n"
+                    f"Student's answer: {user_answer}\n\n"
+                    "Does the student's answer correctly convey the meaning of the correct answer? "
+                    "Minor wording differences and typos are fine, but the core concept must be present. "
+                    "Reply with only YES or NO."
+                ),
+            },
+        ],
+        "stream": False,
+        "options": {"temperature": 0.0},
+    }
+
+    try:
+        req = request.Request(
+            url=f"{ollama_base}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with request.urlopen(req, timeout=30) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        result = body.get("message", {}).get("content", "").strip().upper()
+        return result.startswith("YES")
+    except Exception:
+        return SequenceMatcher(None, user_answer.strip().lower(), correct_answer.strip().lower()).ratio() >= 0.85
+
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -44,16 +90,20 @@ def get_current_user(
     session = db.query(UserSession).filter(UserSession.token == token).first()
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
+
+
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
     return user
+
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +139,7 @@ def logout(authorization: str = Header(...), db: Session = Depends(get_db)):
 def me(current_user: User = Depends(get_current_user)):
     return current_user
 
+
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 @app.post("/generate")
@@ -100,6 +151,7 @@ def generate(payload: GenerateRequest, current_user: User = Depends(get_current_
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
     return {"flashcards": flashcards}
+
 
 # ── Flashcards ────────────────────────────────────────────────────────────────
 
@@ -125,6 +177,7 @@ def delete_flashcard(flashcard_id: int, current_user: User = Depends(get_current
     db.delete(card); db.commit()
     return {"status": "deleted"}
 
+
 # ── Quiz ──────────────────────────────────────────────────────────────────────
 
 @app.post("/quiz/start", response_model=QuizCardOut)
@@ -135,10 +188,7 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
         all_cards = db.query(Flashcard).filter(Flashcard.user_id == current_user.id).all()
         if not all_cards:
             raise HTTPException(status_code=404, detail="No flashcards saved yet.")
-        # SCRUM-49: Difficulty prioritization — cards missed more often get higher selection weight.
-        # Note: base weight stays at least 1 so unseen cards can still appear.
         weights = [max(1, c.wrong_count + 1) for c in all_cards]
-        # SCRUM-47: Random selection — pick up to the requested count (UI uses 5–20; API allows 1–50).
         k       = min(payload.count, len(all_cards))
         cards   = random.choices(all_cards, weights=weights, k=k)
         seen: set[int] = set(); unique = []
@@ -160,51 +210,120 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
 @app.post("/quiz/answer", response_model=AnswerResult)
 def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     session = db.query(QuizSession).filter(QuizSession.id == payload.session_id, QuizSession.user_id == current_user.id).first()
-
     if not session: raise HTTPException(status_code=404, detail="Quiz session not found.")
     card_ids = [int(x) for x in session.flashcard_ids.split(",")]
     idx = session.current_index
-
     if idx >= len(card_ids): raise HTTPException(status_code=400, detail="Quiz already finished.")
     card = db.query(Flashcard).filter(Flashcard.id == card_ids[idx]).first()
-    
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
-    user_ans = payload.user_answer.strip().lower()
-    correct_ans = card.answer.strip().lower()
-    # SCRUM-48: Correctness check — exact match OR substring match (contains) to be forgiving.
-    is_correct = SequenceMatcher(None, user_ans, correct_ans).ratio() >= 0.85
-    
-    # SCRUM-49: Persist per-card + per-session performance counters for future weighting.
+
+    is_correct = check_answer_with_ai(payload.user_answer, card.answer)
+
     if is_correct: card.correct_count += 1; session.correct_count += 1
     else:          card.wrong_count   += 1; session.wrong_count   += 1
 
     session.current_index = idx + 1; db.commit()
     is_last = session.current_index >= len(card_ids)
-
     return AnswerResult(correct=is_correct, correct_answer=card.answer, user_answer=payload.user_answer, session_id=session.id, card_index=idx, total_cards=len(card_ids), is_last=is_last)
 
 @app.get("/quiz/{session_id}/next", response_model=QuizCardOut)
 def quiz_next(session_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     session = db.query(QuizSession).filter(QuizSession.id == session_id, QuizSession.user_id == current_user.id).first()
-
     if not session: raise HTTPException(status_code=404, detail="Quiz session not found.")
     card_ids = [int(x) for x in session.flashcard_ids.split(",")]
     idx = session.current_index
-
     if idx >= len(card_ids): raise HTTPException(status_code=400, detail="No more cards.")
     card = db.query(Flashcard).filter(Flashcard.id == card_ids[idx]).first()
-
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
-
     return QuizCardOut(session_id=session.id, card_index=idx, total_cards=len(card_ids), flashcard_id=card.id, question=card.question)
-    # SCRUM-49: Summary returns score_pct plus correct/wrong counts for the quiz session.
+
 @app.get("/quiz/{session_id}/summary", response_model=QuizSummary)
 def quiz_summary(session_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     session = db.query(QuizSession).filter(QuizSession.id == session_id, QuizSession.user_id == current_user.id).first()
-
     if not session: raise HTTPException(status_code=404, detail="Quiz session not found.")
     total = len(session.flashcard_ids.split(","))
     answered = session.correct_count + session.wrong_count
     score_pct = round((session.correct_count / answered) * 100) if answered else 0
-    
     return QuizSummary(session_id=session.id, total_cards=total, correct_count=session.correct_count, wrong_count=session.wrong_count, score_pct=score_pct)
+
+
+# ── Study History ─────────────────────────────────────────────────────────────
+
+@app.post("/study/session", response_model=StudySessionOut)
+def save_study_session(
+    payload: StudySessionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    ids_str = ",".join(str(i) for i in payload.flashcard_ids)
+    session = StudySession(
+        user_id=current_user.id,
+        correct=payload.correct,
+        wrong=payload.wrong,
+        total=payload.total,
+        pct=payload.pct,
+        flashcard_ids=ids_str,
+    )
+    db.add(session); db.commit(); db.refresh(session)
+
+    # Save per-card results
+    for r in payload.results:
+        db.add(StudySessionResult(
+            study_session_id=session.id,
+            flashcard_id=r["flashcard_id"],
+            correct=1 if r["correct"] else 0,
+        ))
+    db.commit()
+    return session
+
+@app.get("/study/history", response_model=list[StudySessionOut])
+def get_study_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(StudySession)
+        .filter(StudySession.user_id == current_user.id)
+        .order_by(StudySession.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+@app.get("/study/history/{session_id}/cards", response_model=list[StudySessionResultOut])
+def get_study_session_cards(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = db.query(StudySession).filter(
+        StudySession.id == session_id,
+        StudySession.user_id == current_user.id,
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    results = db.query(StudySessionResult).filter(
+        StudySessionResult.study_session_id == session_id
+    ).all()
+
+    out = []
+    for r in results:
+        card = db.query(Flashcard).filter(Flashcard.id == r.flashcard_id).first()
+        if card:
+            out.append(StudySessionResultOut(
+                flashcard_id=r.flashcard_id,
+                correct=bool(r.correct),
+                question=card.question,
+                answer=card.answer,
+                deleted=False,
+            ))
+        else:
+            # Card was deleted
+            out.append(StudySessionResultOut(
+                flashcard_id=r.flashcard_id,
+                correct=bool(r.correct),
+                question="",
+                answer="",
+                deleted=True,
+            ))
+    return out

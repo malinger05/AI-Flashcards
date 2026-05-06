@@ -31,6 +31,18 @@ def run_migrations():
         # Keep legacy DBs compatible by adding user_id lazily when absent.
         if "user_id" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+        
+        # user_sessions table
+        us_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(user_sessions)")).fetchall()}
+        if "last_used_at" not in us_cols:
+            conn.execute(text("ALTER TABLE user_sessions ADD COLUMN last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP"))
+
+        # study_sessions table
+        ss_exists = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='study_sessions'")).fetchone()
+        if ss_exists:
+            ss_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(study_sessions)")).fetchall()}
+            if "flashcard_ids" not in ss_cols:
+                conn.execute(text("ALTER TABLE study_sessions ADD COLUMN flashcard_ids TEXT NOT NULL DEFAULT ''"))
 
         # quiz_sessions table (may not exist yet - that's fine, create_all handles it)
         qs_exists = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='quiz_sessions'")).fetchone()

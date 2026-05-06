@@ -69,7 +69,7 @@ export function LoginPage({ onLogin, goReg }) {
           {err && <div className="auth-err">{err}</div>}
           <form className="auth-form" onSubmit={submit}>
             <div className="field-wrap">
-              <span className="field-icon">✉</span>
+              <span className="field-icon"></span>
               <input
                 type="text"
                 placeholder="Email address"
@@ -178,7 +178,7 @@ export function RegisterPage({ onLogin, goLogin }) {
               />
             </div>
             <div className="field-wrap">
-              <span className="field-icon">✉</span>
+              <span className="field-icon"></span>
               <input
                 type="text"
                 placeholder="Email address"

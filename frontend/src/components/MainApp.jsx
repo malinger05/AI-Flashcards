@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../constants";
-import { getHistory, addSession } from "../utils/storage";
 import GenerateTab from "./GenerateTab";
 import StudyTab from "./StudyTab";
 import QuizTab from "./QuizTab";
@@ -14,9 +13,11 @@ export default function MainApp({ user, onLogout }) {
   const [ddOpen, setDdOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [loadingCards, setLoadingCards] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [sessionCards, setSessionCards] = useState(null);
+  const [loadingSessionCards, setLoadingSessionCards] = useState(false);
   const ddRef = useRef(null);
 
-  // Load saved flashcards from DB on mount
   useEffect(() => {
     apiFetch("/flashcards")
       .then((r) => r.json())
@@ -27,7 +28,15 @@ export default function MainApp({ user, onLogout }) {
       .finally(() => setLoadingCards(false));
   }, []);
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    apiFetch("/study/history")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setHistory(data);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     function handler(e) {
       if (ddRef.current && !ddRef.current.contains(e.target)) setDdOpen(false);
@@ -36,7 +45,6 @@ export default function MainApp({ user, onLogout }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Save generated cards to DB
   async function persistSaved(cards) {
     try {
       const res = await apiFetch("/flashcards", {
@@ -52,11 +60,28 @@ export default function MainApp({ user, onLogout }) {
     }
   }
 
-  // Refresh saved list from DB (called after save)
   async function refreshSaved() {
     const res = await apiFetch("/flashcards");
     const data = await res.json();
     if (Array.isArray(data)) setSaved(data);
+  }
+
+  function onSessionSaved(session) {
+    setHistory((prev) => [session, ...prev]);
+  }
+
+  async function viewSessionCards(sessionId) {
+    setLoadingSessionCards(true);
+    setSessionCards(null);
+    try {
+      const res = await apiFetch(`/study/history/${sessionId}/cards`);
+      const data = await res.json();
+      if (Array.isArray(data)) setSessionCards(data);
+    } catch (e) {
+      console.error("Failed to load session cards", e);
+    } finally {
+      setLoadingSessionCards(false);
+    }
   }
 
   function startCustomStudy(cards) {
@@ -69,8 +94,6 @@ export default function MainApp({ user, onLogout }) {
   }
 
   const studyCards = customStudy ?? (gen.length ? gen : saved);
-
-  const history = getHistory(user.id);
   const bestPct = history.length
     ? Math.max(...history.map((s) => s.pct))
     : null;
@@ -79,7 +102,6 @@ export default function MainApp({ user, onLogout }) {
 
   return (
     <div className="app-shell" onClick={() => setDdOpen(false)}>
-      {/* TOP BAR */}
       <header className="topbar">
         <div className="tb-left">
           <div className="tb-bs">
@@ -89,7 +111,6 @@ export default function MainApp({ user, onLogout }) {
           </div>
           <span className="tb-name">FlashCards</span>
         </div>
-
         <nav className="tb-nav">
           {["generate", "study", "quiz", "saved"].map((t) => (
             <button
@@ -101,7 +122,6 @@ export default function MainApp({ user, onLogout }) {
             </button>
           ))}
         </nav>
-
         <div
           className="tb-right"
           ref={ddRef}
@@ -111,7 +131,6 @@ export default function MainApp({ user, onLogout }) {
           <button className="avatar-btn" onClick={() => setDdOpen((d) => !d)}>
             {user.name[0].toUpperCase()}
           </button>
-
           {ddOpen && (
             <div className="acct-dropdown">
               <div className="dd-user">
@@ -138,6 +157,7 @@ export default function MainApp({ user, onLogout }) {
                   onClick={() => {
                     setModal("history");
                     setDdOpen(false);
+                    setSessionCards(null);
                   }}
                 >
                   <span className="dd-ico">📊</span> Study history
@@ -152,7 +172,6 @@ export default function MainApp({ user, onLogout }) {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
       <main className="content">
         {tab === "generate" && (
           <GenerateTab
@@ -171,7 +190,7 @@ export default function MainApp({ user, onLogout }) {
             customLabel={
               customStudy ? `${customStudy.length} selected cards` : null
             }
-            userId={user.id}
+            onSessionSaved={onSessionSaved}
           />
         )}
         {tab === "quiz" && <QuizTab savedCards={saved} />}
@@ -265,16 +284,132 @@ export default function MainApp({ user, onLogout }) {
 
       {/* HISTORY MODAL */}
       {modal === "history" && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setModal(null);
+            setSessionCards(null);
+          }}
+        >
+          <div
+            className="modal"
+            style={{ maxWidth: sessionCards ? 700 : 560 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-head">
-              <span className="modal-title">Study history</span>
-              <button className="modal-close" onClick={() => setModal(null)}>
+              {sessionCards ? (
+                <button
+                  className="modal-close"
+                  style={{ marginRight: 8 }}
+                  onClick={() => setSessionCards(null)}
+                >
+                  ←
+                </button>
+              ) : null}
+              <span className="modal-title">
+                {sessionCards ? "Cards in this session" : "Study history"}
+              </span>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setModal(null);
+                  setSessionCards(null);
+                }}
+              >
                 ✕
               </button>
             </div>
             <div className="modal-body">
-              {history.length === 0 ? (
+              {/* SESSION CARDS VIEW */}
+              {sessionCards ? (
+                loadingSessionCards ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "2rem",
+                      color: "var(--ink3)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Loading cards…
+                  </div>
+                ) : sessionCards.length === 0 ? (
+                  <div className="hist-empty">
+                    No card data available for this session.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {sessionCards.map((c, i) => (
+                      <div
+                        key={c.flashcard_id}
+                        style={{
+                          background: c.correct ? "#f0fdf4" : "#fff5f5",
+                          borderRadius: 12,
+                          padding: "12px 16px",
+                          borderLeft: `4px solid ${c.correct ? "#16a34a" : "#dc2626"}`,
+                          opacity: c.deleted ? 0.5 : 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 4,
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontWeight: 700,
+                              fontSize: ".85rem",
+                              color: "var(--ink)",
+                            }}
+                          >
+                            {i + 1}.{" "}
+                            {c.deleted ? (
+                              <span
+                                style={{
+                                  color: "var(--ink3)",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                This flashcard has been deleted
+                              </span>
+                            ) : (
+                              c.question
+                            )}
+                          </p>
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              fontSize: ".85rem",
+                              color: c.correct ? "#16a34a" : "#dc2626",
+                              marginLeft: 12,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {c.correct ? "✓ Correct" : "✗ Wrong"}
+                          </span>
+                        </div>
+                        {!c.deleted && (
+                          <p
+                            style={{ fontSize: ".8rem", color: "var(--ink2)" }}
+                          >
+                            {c.answer}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : /* HISTORY LIST VIEW */
+              history.length === 0 ? (
                 <div className="hist-empty">
                   <div style={{ fontSize: "2.5rem", marginBottom: ".75rem" }}>
                     📭
@@ -293,7 +428,7 @@ export default function MainApp({ user, onLogout }) {
                           {history.find((s) => s.pct === bestPct)?.total} cards
                           ·{" "}
                           {new Date(
-                            history.find((s) => s.pct === bestPct)?.date,
+                            history.find((s) => s.pct === bestPct)?.created_at,
                           ).toLocaleDateString()}
                         </div>
                       </div>
@@ -316,12 +451,17 @@ export default function MainApp({ user, onLogout }) {
                             ? "#f4845f"
                             : "#e05252";
                       return (
-                        <div className="sess-item" key={s.id}>
+                        <div
+                          className="sess-item"
+                          key={s.id}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => viewSessionCards(s.id)}
+                        >
                           <div className="sess-medal">{medal}</div>
                           <div className="sess-bar-wrap">
                             <div className="sess-top">
                               <span className="sess-date">
-                                {new Date(s.date).toLocaleDateString(
+                                {new Date(s.created_at).toLocaleDateString(
                                   undefined,
                                   {
                                     month: "short",
@@ -345,6 +485,15 @@ export default function MainApp({ user, onLogout }) {
                             <div className="sess-meta">
                               ✓ {s.correct} correct · ✗ {s.wrong} wrong ·{" "}
                               {s.total} total
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  color: "var(--teal-d)",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                View cards →
+                              </span>
                             </div>
                           </div>
                         </div>

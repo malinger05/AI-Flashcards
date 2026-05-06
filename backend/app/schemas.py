@@ -23,7 +23,7 @@ class UserOut(BaseModel):
         from_attributes = True
 
 class AuthResponse(BaseModel):
-    token: str      # simple session token stored in localStorage
+    token: str
     user:  UserOut
 
 
@@ -39,7 +39,6 @@ class FlashcardBase(BaseModel):
 class FlashcardCreate(FlashcardBase):
     pass
 
-# SCRUM-49: Expose performance counters so UI can show results and/or saved-card stats.
 class FlashcardOut(FlashcardBase):
     id:            int
     correct_count: int
@@ -53,7 +52,6 @@ class FlashcardOut(FlashcardBase):
 # ── Quiz ──────────────────────────────────────────────────────────────────────
 
 class QuizStartRequest(BaseModel):
-    # count controls quiz size; frontend presets include 5/8/10/15/20.
     flashcard_ids: list[int] = Field(default_factory=list)
     count:         int        = Field(default=10, ge=1, le=50)
 
@@ -83,3 +81,36 @@ class QuizSummary(BaseModel):
     correct_count: int
     wrong_count:   int
     score_pct:     int
+
+
+# ── Study History ─────────────────────────────────────────────────────────────
+
+class StudySessionCreate(BaseModel):
+    correct:       int
+    wrong:         int
+    total:         int
+    pct:           int
+    flashcard_ids: list[int] = Field(default_factory=list)
+    results:       list[dict] = Field(default_factory=list)
+
+class StudySessionOut(BaseModel):
+    id:            int
+    correct:       int
+    wrong:         int
+    total:         int
+    pct:           int
+    flashcard_ids: str
+    created_at:    datetime
+
+    class Config:
+        from_attributes = True
+
+class StudySessionResultOut(BaseModel):
+    flashcard_id: int
+    correct:      bool
+    question:     str
+    answer:       str
+    deleted:      bool = False
+
+    class Config:
+        from_attributes = True

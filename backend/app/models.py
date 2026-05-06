@@ -1,22 +1,18 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
-
 from .db import Base
 
 
 class User(Base):
     __tablename__ = "users"
-
     id         = Column(Integer, primary_key=True, index=True)
     name       = Column(String, nullable=False)
     email      = Column(String, unique=True, nullable=False, index=True)
-    password   = Column(String, nullable=False)          # bcrypt hash
+    password   = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class UserSession(Base):
-    """Maps a token string → user_id (simple stateful sessions)."""
     __tablename__ = "user_sessions"
-
     id         = Column(Integer, primary_key=True, index=True)
     token      = Column(String, unique=True, nullable=False, index=True)
     user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -25,7 +21,6 @@ class UserSession(Base):
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
-    # SCRUM-49: Track user difficulty — used to bias future quiz selection toward missed cards.
     id            = Column(Integer, primary_key=True, index=True)
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     question      = Column(String, nullable=False)
@@ -37,8 +32,6 @@ class Flashcard(Base):
 
 class QuizSession(Base):
     __tablename__ = "quiz_sessions"
-    # Keeps quiz-local progress and score counters while a session is active.
-
     id            = Column(Integer, primary_key=True, index=True)
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
     flashcard_ids = Column(String, nullable=False)
@@ -46,3 +39,23 @@ class QuizSession(Base):
     correct_count = Column(Integer, default=0, nullable=False)
     wrong_count   = Column(Integer, default=0, nullable=False)
     created_at    = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class StudySession(Base):
+    __tablename__ = "study_sessions"
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    correct       = Column(Integer, nullable=False)
+    wrong         = Column(Integer, nullable=False)
+    total         = Column(Integer, nullable=False)
+    pct           = Column(Integer, nullable=False)
+    flashcard_ids = Column(String, nullable=False, default="")
+    created_at    = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class StudySessionResult(Base):
+    __tablename__ = "study_session_results"
+    id               = Column(Integer, primary_key=True, index=True)
+    study_session_id = Column(Integer, ForeignKey("study_sessions.id"), nullable=False, index=True)
+    flashcard_id     = Column(Integer, ForeignKey("flashcards.id"), nullable=False)
+    correct          = Column(Integer, nullable=False)  # 1 = correct, 0 = wrong

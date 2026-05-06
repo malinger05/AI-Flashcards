@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import Doodle from "./Doodle";
-import { addSession } from "../utils/storage";
+import { apiFetch } from "../constants";
 
-export default function StudyTab({ cards, customLabel, userId }) {
+export default function StudyTab({ cards, customLabel, onSessionSaved }) {
   const [deck, setDeck] = useState([]);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -11,6 +11,7 @@ export default function StudyTab({ cards, customLabel, userId }) {
   const [wrong, setWrong] = useState(0);
   const [done, setDone] = useState(false);
   const [started, setStarted] = useState(false);
+  const [results, setResults] = useState([]);
   const dragX = useRef(null);
   const savedRef = useRef(false);
 
@@ -26,6 +27,7 @@ export default function StudyTab({ cards, customLabel, userId }) {
     setWrong(0);
     setDone(false);
     setStarted(true);
+    setResults([]);
     savedRef.current = false;
   }
 
@@ -36,23 +38,42 @@ export default function StudyTab({ cards, customLabel, userId }) {
   function doSwipe(dir) {
     if (!flipped || swipe) return;
     setSwipe(dir);
+    const currentCard = deck[idx];
     const newRight = dir === "right" ? right + 1 : right;
     const newWrong = dir === "left" ? wrong + 1 : wrong;
     if (dir === "right") setRight((r) => r + 1);
     else setWrong((w) => w + 1);
+
+    const newResults = [
+      ...results,
+      { flashcard_id: currentCard.id, correct: dir === "right" },
+    ];
+    setResults(newResults);
+
     setTimeout(() => {
       const next = idx + 1;
       if (next >= deck.length) {
-        if (userId && !savedRef.current) {
+        if (!savedRef.current) {
+          savedRef.current = true;
           const total = deck.length;
           const pct = Math.round((newRight / total) * 100);
-          addSession(userId, {
-            correct: newRight,
-            wrong: newWrong,
-            total,
-            pct,
-          });
-          savedRef.current = true;
+          const flashcard_ids = deck.map((c) => c.id).filter(Boolean);
+          apiFetch("/study/session", {
+            method: "POST",
+            body: JSON.stringify({
+              correct: newRight,
+              wrong: newWrong,
+              total,
+              pct,
+              flashcard_ids,
+              results: newResults,
+            }),
+          })
+            .then((r) => r.json())
+            .then((session) => {
+              if (onSessionSaved) onSessionSaved(session);
+            })
+            .catch((err) => console.error("Failed to save study session", err));
         }
         setDone(true);
       } else {
@@ -169,7 +190,6 @@ export default function StudyTab({ cards, customLabel, userId }) {
       <div className="prog">
         <div className="progf" style={{ width: `${pct}%` }} />
       </div>
-
       <div
         className={`stage${swipe === "right" ? " sr" : swipe === "left" ? " sl" : ""}`}
         onClick={flipped ? undefined : flip}
@@ -205,7 +225,6 @@ export default function StudyTab({ cards, customLabel, userId }) {
           </div>
         </div>
       </div>
-
       <div className="sacts">
         <button
           className="sbtn w"

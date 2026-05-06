@@ -43,14 +43,18 @@ export default function App() {
   }
 
   function logout() {
+    // Immediately clear local state and unmount MainApp so no in-flight
+    // requests fire with the old token while the logout call is in progress.
+    const token = getToken();
+    clearToken();
+    setUser(null);
+    setPage("login");
+
+    // Best-effort server-side session cleanup.
     fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-    }).finally(() => {
-      clearToken();
-      setUser(null);
-      setPage("login");
-    });
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
   }
 
   if (page === "loading") {
