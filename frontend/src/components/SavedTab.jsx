@@ -1,9 +1,16 @@
 import { useMemo, useState } from "react";
 import Doodle from "./Doodle";
+import { apiFetch } from "../constants";
 
-export default function SavedTab({ cards, onExport, onStudySelected }) {
+export default function SavedTab({
+  cards,
+  onExport,
+  onStudySelected,
+  onDelete,
+}) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [deleting, setDeleting] = useState(null);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -31,6 +38,20 @@ export default function SavedTab({ cards, onExport, onStudySelected }) {
   function studySelected() {
     const pick = cards.filter((c) => selected.has(c.id));
     if (pick.length) onStudySelected(pick);
+  }
+
+  async function deleteSelected() {
+    for (const id of selected) {
+      setDeleting(id);
+      try {
+        await apiFetch(`/flashcards/${id}`, { method: "DELETE" });
+        onDelete(id);
+      } catch (err) {
+        console.error("Delete failed", err);
+      }
+    }
+    setDeleting(null);
+    clearSelection();
   }
 
   const selCount = selected.size;
@@ -136,6 +157,14 @@ export default function SavedTab({ cards, onExport, onStudySelected }) {
           <div className="sel-actions">
             <button className="btn btn-white" onClick={clearSelection}>
               Clear
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ color: "#c0392b", borderColor: "#c0392b" }}
+              disabled={deleting !== null}
+              onClick={deleteSelected}
+            >
+              {deleting !== null ? "Deleting…" : `Delete ${selCount}`}
             </button>
             <button className="btn btn-violet" onClick={studySelected}>
               ▶ Study {selCount} card{selCount !== 1 ? "s" : ""}

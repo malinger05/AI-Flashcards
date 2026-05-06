@@ -191,6 +191,9 @@ export default function MainApp({ user, onLogout }) {
             <SavedTab
               cards={saved}
               onStudySelected={startCustomStudy}
+              onDelete={(id) =>
+                setSaved((prev) => prev.filter((c) => c.id !== id))
+              }
               onExport={() => {
                 const a = document.createElement("a");
                 a.href = URL.createObjectURL(

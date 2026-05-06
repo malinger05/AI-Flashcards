@@ -3,6 +3,7 @@ import random
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from difflib import SequenceMatcher
 
 from .ai import generate_flashcards
 from .auth import generate_token, hash_password, verify_password
@@ -171,8 +172,8 @@ def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current
     user_ans = payload.user_answer.strip().lower()
     correct_ans = card.answer.strip().lower()
     # SCRUM-48: Correctness check — exact match OR substring match (contains) to be forgiving.
-    is_correct = user_ans == correct_ans or correct_ans in user_ans or user_ans in correct_ans
-
+    is_correct = SequenceMatcher(None, user_ans, correct_ans).ratio() >= 0.85
+    
     # SCRUM-49: Persist per-card + per-session performance counters for future weighting.
     if is_correct: card.correct_count += 1; session.correct_count += 1
     else:          card.wrong_count   += 1; session.wrong_count   += 1
