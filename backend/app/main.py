@@ -134,8 +134,9 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
         all_cards = db.query(Flashcard).filter(Flashcard.user_id == current_user.id).all()
         if not all_cards:
             raise HTTPException(status_code=404, detail="No flashcards saved yet.")
-        # Favor cards the user got wrong more often.
+        # SCRUM-49: Difficulty prioritization — cards missed more often get higher selection weight.
         weights = [max(1, c.wrong_count + 1) for c in all_cards]
+        # SCRUM-47: Random selection — pick up to the requested count (UI uses 5–20; API allows 1–50).
         k       = min(payload.count, len(all_cards))
         cards   = random.choices(all_cards, weights=weights, k=k)
         seen: set[int] = set(); unique = []
@@ -168,10 +169,10 @@ def quiz_answer(payload: AnswerRequest, current_user: User = Depends(get_current
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
     user_ans = payload.user_answer.strip().lower()
     correct_ans = card.answer.strip().lower()
-    # Keep answer check forgiving for small wording differences.
+    # SCRUM-48: Correctness check — exact match OR substring match (contains) to be forgiving.
     is_correct = user_ans == correct_ans or correct_ans in user_ans or user_ans in correct_ans
 
-#correct_count and wrong_count are new and added to the quiz_answer function
+    # SCRUM-49: Persist per-card + per-session performance counters for future weighting.
     if is_correct: card.correct_count += 1; session.correct_count += 1
     else:          card.wrong_count   += 1; session.wrong_count   += 1
 
@@ -194,7 +195,7 @@ def quiz_next(session_id: int, current_user: User = Depends(get_current_user), d
     if not card: raise HTTPException(status_code=404, detail="Flashcard not found.")
 
     return QuizCardOut(session_id=session.id, card_index=idx, total_cards=len(card_ids), flashcard_id=card.id, question=card.question)
-#The GET /quiz/{session_id}/summary endpoint calculates and returns the score_pct, correct_count, and wrong_count values.
+    # SCRUM-49: Summary returns score_pct plus correct/wrong counts for the quiz session.
 @app.get("/quiz/{session_id}/summary", response_model=QuizSummary)
 def quiz_summary(session_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     session = db.query(QuizSession).filter(QuizSession.id == session_id, QuizSession.user_id == current_user.id).first()

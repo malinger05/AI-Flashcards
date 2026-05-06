@@ -274,7 +274,7 @@ export default function QuizTab({ savedCards }) {
         </div>
       </div>
     );
-//The summary is displayed last in the UI (score + correct/wrong/total):
+// SCRUM-49: Show end-of-quiz summary (score + correct/wrong/total).
   if (phase === "summary" && summary) {
     const pct = summary.score_pct;
     return (
