@@ -53,6 +53,7 @@ class FlashcardOut(FlashcardBase):
 # ── Quiz ──────────────────────────────────────────────────────────────────────
 
 class QuizStartRequest(BaseModel):
+    # count controls quiz size; frontend presets include 5/8/10/15/20.
     flashcard_ids: list[int] = Field(default_factory=list)
     count:         int        = Field(default=10, ge=1, le=50)
 

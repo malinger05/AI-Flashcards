@@ -37,6 +37,7 @@ class Flashcard(Base):
 
 class QuizSession(Base):
     __tablename__ = "quiz_sessions"
+    # Keeps quiz-local progress and score counters while a session is active.
 
     id            = Column(Integer, primary_key=True, index=True)
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)

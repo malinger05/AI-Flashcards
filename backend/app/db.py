@@ -28,6 +28,7 @@ def run_migrations():
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN correct_count INTEGER NOT NULL DEFAULT 0"))
         if "wrong_count" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN wrong_count INTEGER NOT NULL DEFAULT 0"))
+        # Keep legacy DBs compatible by adding user_id lazily when absent.
         if "user_id" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN user_id INTEGER REFERENCES users(id)"))
 

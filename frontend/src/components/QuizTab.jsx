@@ -138,6 +138,7 @@ export default function QuizTab({ savedCards }) {
   const progressPct =
     totalCards > 0
       ? Math.round(
+          // In feedback phase, treat current question as completed for progress UI.
           ((cardIndex + (phase === "feedback" ? 1 : 0)) / totalCards) * 100,
         )
       : 0;
