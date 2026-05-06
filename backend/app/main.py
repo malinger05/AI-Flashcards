@@ -135,6 +135,7 @@ def quiz_start(payload: QuizStartRequest, current_user: User = Depends(get_curre
         if not all_cards:
             raise HTTPException(status_code=404, detail="No flashcards saved yet.")
         # SCRUM-49: Difficulty prioritization — cards missed more often get higher selection weight.
+        # Note: base weight stays at least 1 so unseen cards can still appear.
         weights = [max(1, c.wrong_count + 1) for c in all_cards]
         # SCRUM-47: Random selection — pick up to the requested count (UI uses 5–20; API allows 1–50).
         k       = min(payload.count, len(all_cards))
