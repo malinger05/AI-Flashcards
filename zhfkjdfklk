@@ -1,0 +1,47 @@
+[33m005198c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m added History tab and better answer validation through llama 3.2
+[33mef350d5[m added Delete button
+[33m626cb90[m Merge maryam_branch into main (docs: additional SCRUM comments)
+[33m7550961[m[33m ([m[1;31morigin/maryam_branch[m[33m)[m docs: clarify quiz progress calculation during feedback
+[33m66129ed[m docs: explain legacy-compatible user_id migration
+[33m9e5fa1c[m docs: annotate quiz start count semantics
+[33mbda7a7c[m docs: document purpose of quiz session counters
+[33m4204d7e[m docs: clarify baseline weight behavior in quiz selection
+[33m1e81ac8[m Merge maryam_branch into main (SCRUM-47/48/49)
+[33m0fdf3d3[m SCRUM-47/48/49: annotate quiz selection, answer check, and weighting
+[33mc196e09[m Merge branch 'fix/rebase-resolved-push-branch' into feature/designFeature merging branches
+[33m45af805[m Track flashcard correct_count/wrong_count, calculate quiz score on the backend, and display the end-of-quiz summary
+[33m08d500a[m correct_count and wrong_count are new and added to the quiz_answer function and API response
+[33me31c4b5[m correct_count and wrong_count are added to models and database
+[33m183147a[m[33m ([m[1;31morigin/fix/rebase-resolved-push-branch[m[33m)[m SCRUM-44 Frontend: Show next question navigation
+[33md29a542[m SCRUM-43 Frontend: Show correct answer after submission
+[33mee5a41a[m SCRUM-42 Frontend: Add input field and "submit answer" button
+[33m13896bf[m SCRUM-41 Frontend: Build quiz UI (show question only first)
+[33m4ce1c6b[m  SCRUM-40 Frontend: Create quiz start button (from saved flashcards)
+[33m94e5078[m update frontend api target and local dev compatibility.
+[33mb64b750[m[33m ([m[1;31morigin/feature/designFeature[m[33m)[m divided: App.jsx into several files for better structure
+[33mc8b4460[m changed Structure of the project based on the SPRINT tasks
+[33m21db8a0[m changed: gitignore
+[33m87c47b1[m update: design of the app and registration logic
+[33m66ea43c[m Improvements on the UI and added a database to save the flashcards.
+[33mee8b6a4[m SCRUM-24 Frontend:Handle loading state (button spinner or text)
+[33mc6cec17[m SCRUM-23 Frontend:Display flashcards (question + answer)
+[33m9dacf74[m SCRUM-22 Frontend: Call /generate API from frontend
+[33mf28e7f0[m SCRUM-21 Frontend:Create text area for input notes and add submit button
+[33m87bbe2e[m SCRUM-20 Frontend:Initialize React project
+[33md628786[m SCRUM-30 Integration: Connect frontend to backend (/generate)
+[33m21c0dd4[m Merge branch 'main' of github.com:malinger05/AI-Flashcards
+[33m0e93cae[m Addedd description to CORS functionlaity
+[33mbef98bb[m SCRUM 29 Implement fetch function for flashcards
+[33m3179ec6[m SCRUM 28 Implement insert function for flashcards
+[33m332ee10[m SCRUM 27 Connect backend to database
+[33me61c7ca[m Merge branch 'main' of github.com:malinger05/AI-Flashcards
+[33m304e4a0[m SCRUM-15 Enable CORS for frontend communication
+[33m0953c6e[m SCRUM-12 Parse AI response into structured JSON
+[33mde83a90[m SCRUM-14 Create GET /flashcards endpoint to retrieve flashcards
+[33m596c4e3[m Changed file location
+[33m1ff2fdb[m SCRUM-10 Create POST /generate endpoint (accept text input)
+[33m7414d0f[m SCRUM-9 Backend: Create FastAPI project and basic server setup
+[33md4d9b7e[m Add backend/.env.example for Ollama configuration template
+[33m48d7d6c[m Add backend/.env for Ollama config; allow via .gitignore exception
+[33m01695c5[m SCRUM-16 SCRUM-17 SCRUM-18 SCRUM-19 AI module updates: prompt design, JSON enforcement, testing, error handling
+[33m20e36e0[m Initial commit

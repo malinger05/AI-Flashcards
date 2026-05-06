@@ -10,7 +10,7 @@ Return ONLY valid JSON with this exact shape — no markdown, no explanation, no
   "flashcards": [
     {
       "question": "string",
-      "answer": "string"
+      "answer": "string" // should be concise, ideally one sentence, but can be up to 2 sentences if needed for clarity
     }
   ]
 }
