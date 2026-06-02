@@ -1,773 +1,425 @@
-import { useMemo, useRef, useState } from "react";
-import Doodle from "./Doodle";
-import { apiFetch } from "../constants";
+import { useMemo } from "react";
 
-// ── Edit Card Modal ───────────────────────────────────────────────────────────
-function EditCardModal({ card, onSave, onClose }) {
-  const [q, setQ] = useState(card.question);
-  const [a, setA] = useState(card.answer);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+// ── Mini bar chart ────────────────────────────────────────────────────────────
+function MiniBar({ pct, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        style={{
+          flex: 1,
+          height: 8,
+          borderRadius: 99,
+          background: "var(--teal-ll, #e6f4f3)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            background: color,
+            borderRadius: 99,
+            transition: "width .6s cubic-bezier(.4,0,.2,1)",
+          }}
+        />
+      </div>
+      <span style={{ fontSize: ".75rem", fontWeight: 800, color: "var(--ink2)", minWidth: 32, textAlign: "right" }}>
+        {pct}%
+      </span>
+    </div>
+  );
+}
 
-  async function save() {
-    if (!q.trim() || !a.trim()) return;
-    setSaving(true);
-    await onSave(card.id, q.trim(), a.trim());
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => onClose(), 700);
-  }
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, accent }) {
+  return (
+    <div
+      style={{
+        background: "var(--card, #fff)",
+        border: "1.5px solid var(--teal-ll, #d4ecea)",
+        borderRadius: 18,
+        padding: "1.25rem 1.5rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "1rem",
+        boxShadow: "0 2px 12px rgba(10,92,89,.06)",
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          background: accent ?? "var(--teal-ll, #e6f4f3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.5rem",
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+          {label}
+        </div>
+        <div style={{ fontSize: "1.55rem", fontWeight: 900, color: "var(--ink)", lineHeight: 1.15 }}>
+          {value}
+        </div>
+        {sub && (
+          <div style={{ fontSize: ".72rem", fontWeight: 600, color: "var(--ink3)", marginTop: 2 }}>
+            {sub}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-  const charLimitQ = 300;
-  const charLimitA = 500;
-  const qPct = Math.min((q.length / charLimitQ) * 100, 100);
-  const aPct = Math.min((a.length / charLimitA) * 100, 100);
-  const dirty =
-    q.trim() !== card.question.trim() || a.trim() !== card.answer.trim();
+// ── Session history row ───────────────────────────────────────────────────────
+function SessionRow({ session, index }) {
+  const medal = session.pct === 100 ? "🥇" : session.pct >= 80 ? "🥈" : session.pct >= 60 ? "🥉" : "📚";
+  const fillColor = session.pct >= 70 ? "#1a8a85" : session.pct >= 50 ? "#f4845f" : "#e05252";
+  const date = new Date(session.created_at).toLocaleDateString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 
   return (
-    <div className="ecm-overlay" onClick={onClose}>
-      <div className="ecm-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="ecm-header">
-          <div className="ecm-header-left">
-            <div className="ecm-header-icon">✏️</div>
-            <div>
-              <h2 className="ecm-title">Edit flashcard</h2>
-              <p className="ecm-subtitle">Changes sync to your account</p>
-            </div>
-          </div>
-          <button className="ecm-close-btn" onClick={onClose}>
-            ✕
-          </button>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "1rem",
+        padding: "14px 16px",
+        background: "var(--card, #fff)",
+        borderRadius: 14,
+        border: "1.5px solid var(--teal-ll, #d4ecea)",
+        boxShadow: "0 1px 6px rgba(10,92,89,.04)",
+        animation: `fadeUp .3s ease both`,
+        animationDelay: `${index * 40}ms`,
+      }}
+    >
+      <span style={{ fontSize: "1.4rem" }}>{medal}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--ink2)" }}>{date}</span>
+          <span style={{ fontSize: ".9rem", fontWeight: 900, color: fillColor }}>{session.pct}%</span>
         </div>
-
-        {/* Live preview */}
-        <div className="ecm-preview-strip">
-          <div className="ecm-preview-card ecm-preview-q">
-            <span className="ecm-preview-lbl">Q</span>
-            <p className="ecm-preview-txt">{q || "Question preview…"}</p>
-          </div>
-          <div className="ecm-preview-arrow">→</div>
-          <div className="ecm-preview-card ecm-preview-a">
-            <span className="ecm-preview-lbl">A</span>
-            <p className="ecm-preview-txt">{a || "Answer preview…"}</p>
-          </div>
+        <div style={{ height: 6, borderRadius: 99, background: "var(--teal-ll, #e6f4f3)", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${session.pct}%`, background: fillColor, borderRadius: 99 }} />
         </div>
-
-        {/* Fields */}
-        <div className="ecm-body">
-          <div className="ecm-field">
-            <div className="ecm-field-top">
-              <label className="ecm-label">
-                <span className="ecm-badge ecm-badge-q">Q</span>
-                Question
-              </label>
-              <span
-                className={
-                  "ecm-char-count" +
-                  (q.length > charLimitQ * 0.9 ? " warn" : "") +
-                  (q.length >= charLimitQ ? " over" : "")
-                }
-              >
-                {q.length}/{charLimitQ}
-              </span>
-            </div>
-            <div className="ecm-textarea-wrap">
-              <textarea
-                className="ecm-textarea"
-                rows={3}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="What do you want to be asked?"
-                maxLength={charLimitQ}
-                autoFocus
-              />
-              <div className="ecm-bar">
-                <div
-                  className="ecm-bar-fill ecm-bar-q"
-                  style={{ width: qPct + "%" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="ecm-sep">
-            <div className="ecm-sep-line" />
-            <span className="ecm-sep-ico">↓</span>
-            <div className="ecm-sep-line" />
-          </div>
-
-          <div className="ecm-field">
-            <div className="ecm-field-top">
-              <label className="ecm-label">
-                <span className="ecm-badge ecm-badge-a">A</span>
-                Answer
-              </label>
-              <span
-                className={
-                  "ecm-char-count" +
-                  (a.length > charLimitA * 0.9 ? " warn" : "") +
-                  (a.length >= charLimitA ? " over" : "")
-                }
-              >
-                {a.length}/{charLimitA}
-              </span>
-            </div>
-            <div className="ecm-textarea-wrap">
-              <textarea
-                className="ecm-textarea"
-                rows={4}
-                value={a}
-                onChange={(e) => setA(e.target.value)}
-                placeholder="What is the correct answer?"
-                maxLength={charLimitA}
-              />
-              <div className="ecm-bar">
-                <div
-                  className="ecm-bar-fill ecm-bar-a"
-                  style={{ width: aPct + "%" }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="ecm-footer">
-          <button
-            className="ecm-btn-cancel"
-            onClick={onClose}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            className={
-              "ecm-btn-save" +
-              (saved ? " saved" : "") +
-              (!dirty ? " unchanged" : "")
-            }
-            onClick={save}
-            disabled={saving || !q.trim() || !a.trim() || !dirty}
-          >
-            {saved ? (
-              "✓ Saved!"
-            ) : saving ? (
-              <>
-                <span className="spin" /> Saving…
-              </>
-            ) : (
-              "💾 Save changes"
-            )}
-          </button>
+        <div style={{ marginTop: 5, fontSize: ".72rem", fontWeight: 600, color: "var(--ink3)" }}>
+          ✓ {session.correct} correct · ✗ {session.wrong} wrong · {session.total} total
         </div>
       </div>
     </div>
   );
 }
 
-// ── Deck Sidebar ──────────────────────────────────────────────────────────────
-function DeckSidebar({ decks, activeDeck, onSelect, onCreate, onDelete }) {
-  const [newName, setNewName] = useState("");
-  const [creating, setCreating] = useState(false);
+// ── Activity calendar (last 30 days) ─────────────────────────────────────────
+function ActivityGrid({ sessions }) {
+  const days = 35;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  function submit() {
-    if (!newName.trim()) return;
-    onCreate(newName.trim());
-    setNewName("");
-    setCreating(false);
+  const countByDay = useMemo(() => {
+    const map = {};
+    sessions.forEach((s) => {
+      const d = new Date(s.created_at);
+      d.setHours(0, 0, 0, 0);
+      const key = d.toISOString().slice(0, 10);
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [sessions]);
+
+  const cells = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const count = countByDay[key] || 0;
+    cells.push({ key, count, label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) });
+  }
+
+  function cellColor(count) {
+    if (count === 0) return "var(--teal-ll, #e6f4f3)";
+    if (count === 1) return "#a3d9d6";
+    if (count <= 3) return "#5bbdb8";
+    return "#1a8a85";
   }
 
   return (
-    <div className="deck-sidebar">
-      <div className="deck-header">Decks</div>
-      <button
-        className={`deck-item${activeDeck === null ? " active" : ""}`}
-        onClick={() => onSelect(null)}
-      >
-        📚 All cards
-      </button>
-      {decks.map((d) => (
-        <div key={d.id} className="deck-item-row">
-          <button
-            className={`deck-item${activeDeck === d.id ? " active" : ""}`}
-            onClick={() => onSelect(d.id)}
-          >
-            🗂 {d.name}
-            {d.card_count > 0 && (
-              <span className="deck-count">{d.card_count}</span>
-            )}
-          </button>
-          <button
-            className="deck-del-btn"
-            title="Delete deck"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(d.id);
+    <div>
+      <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
+        Activity — last 35 days
+      </div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {cells.map((c) => (
+          <div
+            key={c.key}
+            title={`${c.label}: ${c.count} session${c.count !== 1 ? "s" : ""}`}
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: 4,
+              background: cellColor(c.count),
+              cursor: "default",
+              transition: "transform .15s",
             }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-      {creating ? (
-        <div className="deck-new-form">
-          <input
-            className="deck-new-input"
-            placeholder="Deck name…"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submit();
-              if (e.key === "Escape") setCreating(false);
-            }}
-            autoFocus
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.4)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
           />
-          <div className="row" style={{ gap: 4, marginTop: 4 }}>
-            <button
-              className="btn btn-teal"
-              style={{ fontSize: ".75rem", padding: "4px 10px" }}
-              onClick={submit}
-            >
-              Add
-            </button>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: ".75rem", padding: "4px 10px" }}
-              onClick={() => setCreating(false)}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button className="deck-add-btn" onClick={() => setCreating(true)}>
-          + New deck
-        </button>
-      )}
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+        <span style={{ fontSize: ".68rem", color: "var(--ink3)", fontWeight: 600 }}>Less</span>
+        {["var(--teal-ll,#e6f4f3)", "#a3d9d6", "#5bbdb8", "#1a8a85"].map((c, i) => (
+          <div key={i} style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
+        ))}
+        <span style={{ fontSize: ".68rem", color: "var(--ink3)", fontWeight: 600 }}>More</span>
+      </div>
     </div>
   );
 }
 
-// ── PDF / Image Import ────────────────────────────────────────────────────────
-function ImportPanel({ onGenerated }) {
-  const fileRef = useRef(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+// ── Accuracy trend (sparkline) ────────────────────────────────────────────────
+function Sparkline({ sessions }) {
+  const pts = [...sessions].reverse().slice(-20);
+  if (pts.length < 2) return null;
 
-  async function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    setErr("");
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(
-        `${window.__API_BASE__ || "http://127.0.0.1:8000"}/generate/file`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("fc_token")}`,
-          },
-          body: formData,
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Import failed.");
-      if (!Array.isArray(data.flashcards) || !data.flashcards.length)
-        throw new Error("No flashcards extracted. Try a clearer image or PDF.");
-      onGenerated(data.flashcards);
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setLoading(false);
-      e.target.value = "";
-    }
-  }
+  const W = 280, H = 60;
+  const xs = pts.map((_, i) => (i / (pts.length - 1)) * W);
+  const ys = pts.map((s) => H - (s.pct / 100) * H);
+
+  const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
+  const areaD = `${pathD} L${W},${H} L0,${H} Z`;
 
   return (
-    <div className="import-panel">
-      <div className="import-inner">
-        <span className="import-icon">📄</span>
-        <div>
-          <p className="import-title">Import from PDF or image</p>
-          <p className="import-sub">
-            Upload a photo of notes, a PDF, or a screenshot
+    <div>
+      <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 8 }}>
+        Accuracy trend
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 60, display: "block" }}>
+        <defs>
+          <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a8a85" stopOpacity=".35" />
+            <stop offset="100%" stopColor="#1a8a85" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaD} fill="url(#sg)" />
+        <path d={pathD} fill="none" stroke="#1a8a85" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((s, i) => (
+          <circle key={i} cx={xs[i]} cy={ys[i]} r="3" fill="#1a8a85" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export default function StatsTab({ history = [], saved = [], streak = 0 }) {
+  const totalSessions = history.length;
+  const totalCards = saved.length;
+  const avgPct = totalSessions
+    ? Math.round(history.reduce((sum, s) => sum + s.pct, 0) / totalSessions)
+    : null;
+  const bestPct = totalSessions ? Math.max(...history.map((s) => s.pct)) : null;
+  const totalStudied = history.reduce((sum, s) => sum + (s.total || 0), 0);
+  const totalCorrect = history.reduce((sum, s) => sum + (s.correct || 0), 0);
+  const overallAcc = totalStudied > 0 ? Math.round((totalCorrect / totalStudied) * 100) : null;
+
+  if (totalSessions === 0) {
+    return (
+      <div className="tab-pane center-pane">
+        <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}`}</style>
+        <div
+          style={{
+            textAlign: "center",
+            maxWidth: 400,
+            margin: "0 auto",
+            padding: "3rem 1.5rem",
+            animation: "fadeUp .4s ease",
+          }}
+        >
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📊</div>
+          <h2 style={{ fontWeight: 900, color: "var(--ink)", marginBottom: ".5rem" }}>No stats yet</h2>
+          <p style={{ color: "var(--ink3)", fontWeight: 600, lineHeight: 1.6 }}>
+            Complete a study session to start tracking your progress. Your accuracy, streaks, and history will all appear here.
           </p>
         </div>
-        <label
-          className={`btn btn-ghost import-btn${loading ? " disabled" : ""}`}
-        >
-          {loading ? (
-            <>
-              <span className="spin" /> Extracting…
-            </>
-          ) : (
-            "Choose file"
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,.pdf"
-            style={{ display: "none" }}
-            onChange={handleFile}
-            disabled={loading}
-          />
-        </label>
       </div>
-      {err && (
-        <p className="msg-err" style={{ marginTop: ".5rem" }}>
-          {err}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function SavedTab({
-  cards,
-  decks,
-  onExport,
-  onStudySelected,
-  onDelete,
-  onEdit,
-  onCreateDeck,
-  onAddToDeck,
-  onDeleteDeck,
-}) {
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState(new Set());
-  const [deleting, setDeleting] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [activeDeck, setActiveDeck] = useState(null);
-  const [deckPickFor, setDeckPickFor] = useState(null); // card ids to add to deck
-  const [showImport, setShowImport] = useState(false);
-  const [importedCards, setImportedCards] = useState([]);
-  const [savingImport, setSavingImport] = useState(false);
-
-  // Filter by deck and search
-  const filtered = useMemo(() => {
-    let list = cards;
-    if (activeDeck !== null) {
-      const deck = decks.find((d) => d.id === activeDeck);
-      if (deck?.flashcard_ids) {
-        const ids = new Set(deck.flashcard_ids);
-        list = list.filter((c) => ids.has(c.id));
-      } else {
-        list = [];
-      }
-    }
-    const s = q.trim().toLowerCase();
-    if (!s) return list;
-    return list.filter(
-      (c) =>
-        c.question.toLowerCase().includes(s) ||
-        c.answer.toLowerCase().includes(s),
     );
-  }, [cards, decks, q, activeDeck]);
-
-  function toggleCard(id) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   }
-  function selectAll() {
-    setSelected(new Set(filtered.map((c) => c.id)));
-  }
-  function clearSelection() {
-    setSelected(new Set());
-  }
-  function studySelected() {
-    const pick = cards.filter((c) => selected.has(c.id));
-    if (pick.length) onStudySelected(pick);
-  }
-
-  async function deleteSelected() {
-    for (const id of selected) {
-      setDeleting(id);
-      try {
-        await apiFetch(`/flashcards/${id}`, { method: "DELETE" });
-        onDelete(id);
-      } catch (err) {
-        console.error("Delete failed", err);
-      }
-    }
-    setDeleting(null);
-    clearSelection();
-  }
-
-  async function addSelectedToDeck(deckId) {
-    const ids = deckPickFor ?? [...selected];
-    await onAddToDeck(deckId, ids);
-    setDeckPickFor(null);
-    clearSelection();
-  }
-
-  async function saveImportedCards() {
-    if (!importedCards.length) return;
-    setSavingImport(true);
-    try {
-      const res = await apiFetch("/flashcards", {
-        method: "POST",
-        body: JSON.stringify(
-          importedCards.map((c) => ({
-            question: c.question,
-            answer: c.answer,
-          })),
-        ),
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        // Notify parent through a window event (MainApp handles the actual state)
-        window.dispatchEvent(
-          new CustomEvent("fc-cards-saved", { detail: data }),
-        );
-      }
-      setImportedCards([]);
-      setShowImport(false);
-    } finally {
-      setSavingImport(false);
-    }
-  }
-
-  const selCount = selected.size;
 
   return (
-    <div className="tab-pane">
-      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-        {/* Deck sidebar */}
-        <DeckSidebar
-          decks={decks}
-          activeDeck={activeDeck}
-          onSelect={setActiveDeck}
-          onCreate={onCreateDeck}
-          onDelete={onDeleteDeck}
-        />
+    <div className="tab-pane" style={{ maxWidth: 860, margin: "0 auto" }}>
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: none; }
+        }
+      `}</style>
 
-        {/* Main content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="panel">
-            <div className="panel-head">
-              <div className="panel-title">
-                {activeDeck !== null
-                  ? (decks.find((d) => d.id === activeDeck)?.name ?? "Deck")
-                  : "Saved flashcards"}{" "}
-                <span className="pill">{filtered.length}</span>
-              </div>
-              <div className="row">
-                {selCount === 0 ? (
-                  <button
-                    className="btn btn-ghost"
-                    onClick={selectAll}
-                    disabled={!filtered.length}
-                  >
-                    Select all
-                  </button>
-                ) : (
-                  <button className="btn btn-ghost" onClick={clearSelection}>
-                    Clear selection
-                  </button>
-                )}
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => setShowImport((v) => !v)}
-                >
-                  📄 Import
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  onClick={onExport}
-                  disabled={!cards.length}
-                >
-                  Export JSON
-                </button>
-              </div>
-            </div>
+      {/* Headline */}
+      <div style={{ marginBottom: "1.5rem", animation: "fadeUp .3s ease" }}>
+        <h2 style={{ fontWeight: 900, fontSize: "1.4rem", color: "var(--ink)", margin: 0 }}>
+          Your Progress 📈
+        </h2>
+        <p style={{ fontSize: ".85rem", color: "var(--ink3)", fontWeight: 600, marginTop: 4 }}>
+          {totalSessions} study session{totalSessions !== 1 ? "s" : ""} · {totalStudied} cards reviewed
+        </p>
+      </div>
 
-            {/* Import panel */}
-            {showImport && (
-              <div style={{ marginBottom: "1rem" }}>
-                <ImportPanel
-                  onGenerated={(cards) => {
-                    setImportedCards(cards);
-                  }}
-                />
-                {importedCards.length > 0 && (
-                  <div className="import-preview">
-                    <p className="import-preview-title">
-                      {importedCards.length} cards extracted — review then save:
-                    </p>
-                    <div className="pgrid" style={{ marginBottom: ".75rem" }}>
-                      {importedCards.map((c, i) => (
-                        <div className="pcard" key={i}>
-                          <div className="pnum">{i + 1}</div>
-                          <div>
-                            <p className="pq">Q: {c.question}</p>
-                            <p className="pa">A: {c.answer}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="row">
-                      <button
-                        className="btn btn-teal"
-                        onClick={saveImportedCards}
-                        disabled={savingImport}
-                      >
-                        {savingImport
-                          ? "Saving…"
-                          : `Save ${importedCards.length} cards`}
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setImportedCards([])}
-                      >
-                        Discard
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+      {/* Stats grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "1rem",
+          marginBottom: "1.5rem",
+          animation: "fadeUp .35s ease",
+        }}
+      >
+        <StatCard icon="🔥" label="Current streak" value={`${streak} day${streak !== 1 ? "s" : ""}`} accent="#fff8e6" />
+        <StatCard icon="🏆" label="Best score" value={bestPct !== null ? `${bestPct}%` : "—"} accent="#fef9e7" />
+        <StatCard icon="🎯" label="Avg accuracy" value={avgPct !== null ? `${avgPct}%` : "—"} sub="across all sessions" accent="#f0f9ff" />
+        <StatCard icon="🃏" label="Saved cards" value={totalCards} sub="in your library" accent="#f0fdf4" />
+      </div>
 
-            <input
-              className="search-inp"
-              type="text"
-              placeholder="Search cards…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            {selCount === 0 && (
-              <p
-                style={{
-                  fontSize: ".78rem",
-                  color: "var(--ink3)",
-                  fontWeight: 600,
-                  marginTop: ".6rem",
-                }}
-              >
-                💡 Click cards to select — then study, add to a deck, or delete
-              </p>
-            )}
+      {/* Charts row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "1rem",
+          marginBottom: "1.5rem",
+          animation: "fadeUp .4s ease",
+        }}
+      >
+        {/* Overall accuracy breakdown */}
+        <div
+          style={{
+            background: "var(--card, #fff)",
+            border: "1.5px solid var(--teal-ll, #d4ecea)",
+            borderRadius: 18,
+            padding: "1.25rem 1.5rem",
+            boxShadow: "0 2px 12px rgba(10,92,89,.06)",
+          }}
+        >
+          <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>
+            Overall accuracy
           </div>
-
-          {!filtered.length ? (
-            <div className="empty">
-              <div className="empty-ico">{cards.length ? "🔍" : "📭"}</div>
-              <p>
-                {cards.length
-                  ? "No cards match your search."
-                  : "No saved cards yet — generate some!"}
-              </p>
-            </div>
-          ) : (
-            <div className="sgrid">
-              {filtered.map((c) => {
-                const id = c.id;
-                const sel = selected.has(id);
-                const editing = editingId === id;
-                return (
-                  <div
-                    className={`scard teal-card${sel ? " selected" : ""}${editing ? " editing" : ""}`}
-                    key={id}
-                    onClick={() => {
-                      if (!editing) toggleCard(id);
-                    }}
-                  >
-                    {!editing && (
-                      <div className="sel-check">{sel ? "✓" : ""}</div>
-                    )}
-                    <Doodle />
-                    {editing ? (
-                      <CardEditor
-                        card={c}
-                        onSave={async (id, q, a) => {
-                          await onEdit(id, q, a);
-                          setEditingId(null);
-                        }}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    ) : (
-                      <div className="scard-in">
-                        <div>
-                          <p className="sq">{c.question}</p>
-                          <p className="sa">{c.answer}</p>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          {c.created_at && (
-                            <p className="sdt">
-                              {new Date(c.created_at).toLocaleDateString()}
-                            </p>
-                          )}
-                          <button
-                            className="card-edit-btn"
-                            title="Edit card"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingId(id);
-                            }}
-                          >
-                            ✏️
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+          {overallAcc !== null && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: "2.2rem", fontWeight: 900, color: overallAcc >= 70 ? "#0a7c5c" : "#b91c1c", lineHeight: 1 }}>
+                {overallAcc}%
+              </div>
+              <div style={{ fontSize: ".75rem", fontWeight: 600, color: "var(--ink3)", marginTop: 4 }}>
+                {totalCorrect} correct out of {totalStudied} reviewed
+              </div>
             </div>
           )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink2)", marginBottom: 4 }}>Correct</div>
+              <MiniBar pct={overallAcc ?? 0} color="#1a8a85" />
+            </div>
+            <div>
+              <div style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--ink2)", marginBottom: 4 }}>Wrong</div>
+              <MiniBar pct={overallAcc !== null ? 100 - overallAcc : 0} color="#e05252" />
+            </div>
+          </div>
+        </div>
+
+        {/* Sparkline */}
+        <div
+          style={{
+            background: "var(--card, #fff)",
+            border: "1.5px solid var(--teal-ll, #d4ecea)",
+            borderRadius: 18,
+            padding: "1.25rem 1.5rem",
+            boxShadow: "0 2px 12px rgba(10,92,89,.06)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Sparkline sessions={history} />
+          <ActivityGrid sessions={history} />
         </div>
       </div>
 
-      {/* Deck picker modal */}
-      {(deckPickFor !== null || (selCount > 0 && false)) && (
-        <div className="modal-overlay" onClick={() => setDeckPickFor(null)}>
-          <div
-            className="modal"
-            style={{ maxWidth: 360 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-head">
-              <span className="modal-title">Add to deck</span>
-              <button
-                className="modal-close"
-                onClick={() => setDeckPickFor(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              {decks.length === 0 ? (
-                <p style={{ color: "var(--ink3)", fontSize: ".88rem" }}>
-                  No decks yet. Create one in the sidebar.
-                </p>
-              ) : (
+      {/* Score distribution */}
+      <div
+        style={{
+          background: "var(--card, #fff)",
+          border: "1.5px solid var(--teal-ll, #d4ecea)",
+          borderRadius: 18,
+          padding: "1.25rem 1.5rem",
+          marginBottom: "1.5rem",
+          boxShadow: "0 2px 12px rgba(10,92,89,.06)",
+          animation: "fadeUp .45s ease",
+        }}
+      >
+        <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 }}>
+          Score distribution
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 70 }}>
+          {[
+            { label: "0–39%", range: [0, 39], color: "#e05252" },
+            { label: "40–59%", range: [40, 59], color: "#f4845f" },
+            { label: "60–79%", range: [60, 79], color: "#f4c430" },
+            { label: "80–99%", range: [80, 99], color: "#5bbdb8" },
+            { label: "100%", range: [100, 100], color: "#1a8a85" },
+          ].map(({ label, range, color }) => {
+            const count = history.filter((s) => s.pct >= range[0] && s.pct <= range[1]).length;
+            const maxCount = Math.max(...[
+              history.filter((s) => s.pct < 40).length,
+              history.filter((s) => s.pct >= 40 && s.pct < 60).length,
+              history.filter((s) => s.pct >= 60 && s.pct < 80).length,
+              history.filter((s) => s.pct >= 80 && s.pct < 100).length,
+              history.filter((s) => s.pct === 100).length,
+            ], 1);
+            const h = Math.max((count / maxCount) * 60, count > 0 ? 8 : 3);
+            return (
+              <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: ".7rem", fontWeight: 800, color: "var(--ink2)" }}>{count > 0 ? count : ""}</span>
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {decks.map((d) => (
-                    <button
-                      key={d.id}
-                      className="btn btn-ghost"
-                      style={{
-                        justifyContent: "flex-start",
-                        textAlign: "left",
-                      }}
-                      onClick={() => addSelectedToDeck(d.id)}
-                    >
-                      🗂 {d.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                  title={`${label}: ${count} session${count !== 1 ? "s" : ""}`}
+                  style={{
+                    width: "100%",
+                    height: h,
+                    background: color,
+                    borderRadius: "6px 6px 0 0",
+                    opacity: count === 0 ? 0.25 : 1,
+                    transition: "height .5s cubic-bezier(.4,0,.2,1)",
+                  }}
+                />
+                <span style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--ink3)", textAlign: "center" }}>{label}</span>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
-      {/* Selection action bar */}
-      {selCount > 0 && (
-        <div className="sel-bar">
-          <div className="sel-bar-left">
-            <span className="sel-count">
-              {selCount} card{selCount !== 1 ? "s" : ""} selected
-            </span>
-            <span className="sel-hint">ready to study</span>
-          </div>
-          <div className="sel-actions">
-            <button className="btn btn-white" onClick={clearSelection}>
-              Clear
-            </button>
-            {decks.length > 0 && (
-              <button
-                className="btn btn-ghost"
-                onClick={() => setDeckPickFor([...selected])}
-              >
-                🗂 Add to deck
-              </button>
-            )}
-            <button
-              className="btn btn-ghost"
-              style={{ color: "#c0392b", borderColor: "#c0392b" }}
-              disabled={deleting !== null}
-              onClick={deleteSelected}
-            >
-              {deleting !== null ? "Deleting…" : `Delete ${selCount}`}
-            </button>
-            <button className="btn btn-violet" onClick={studySelected}>
-              ▶ Study {selCount} card{selCount !== 1 ? "s" : ""}
-            </button>
-          </div>
+      {/* Session history */}
+      <div style={{ animation: "fadeUp .5s ease" }}>
+        <div style={{ fontSize: ".72rem", fontWeight: 800, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
+          Recent sessions
         </div>
-      )}
-
-      {/* Deck picker modal (triggered from sel-bar) */}
-      {deckPickFor !== null && (
-        <div className="modal-overlay" onClick={() => setDeckPickFor(null)}>
-          <div
-            className="modal"
-            style={{ maxWidth: 360 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-head">
-              <span className="modal-title">Add to deck</span>
-              <button
-                className="modal-close"
-                onClick={() => setDeckPickFor(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              {decks.length === 0 ? (
-                <p style={{ color: "var(--ink3)", fontSize: ".88rem" }}>
-                  No decks yet. Create one in the sidebar.
-                </p>
-              ) : (
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {decks.map((d) => (
-                    <button
-                      key={d.id}
-                      className="btn btn-ghost"
-                      style={{ justifyContent: "flex-start" }}
-                      onClick={() => addSelectedToDeck(d.id)}
-                    >
-                      🗂 {d.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {history.slice(0, 15).map((s, i) => (
+            <SessionRow key={s.id} session={s} index={i} />
+          ))}
+          {history.length > 15 && (
+            <p style={{ textAlign: "center", fontSize: ".78rem", fontWeight: 600, color: "var(--ink3)", padding: ".5rem" }}>
+              + {history.length - 15} older sessions
+            </p>
+          )}
         </div>
-      )}
-
-      {/* Edit card modal */}
-      {editingId !== null &&
-        (() => {
-          const card = cards.find((c) => c.id === editingId);
-          return card ? (
-            <EditCardModal
-              card={card}
-              onSave={onEdit}
-              onClose={() => setEditingId(null)}
-            />
-          ) : null;
-        })()}
+      </div>
     </div>
   );
 }

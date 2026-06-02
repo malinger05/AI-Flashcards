@@ -7,95 +7,529 @@ function EditCardModal({ card, onSave, onClose }) {
   const [q, setQ] = useState(card.question);
   const [a, setA] = useState(card.answer);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function save() {
     if (!q.trim() || !a.trim()) return;
     setSaving(true);
     await onSave(card.id, q.trim(), a.trim());
     setSaving(false);
-    onClose();
+    setSaved(true);
+    setTimeout(() => onClose(), 700);
   }
 
   const charLimitQ = 300;
   const charLimitA = 500;
+  const qPct = Math.min((q.length / charLimitQ) * 100, 100);
+  const aPct = Math.min((a.length / charLimitA) * 100, 100);
+  const dirty =
+    q.trim() !== card.question.trim() || a.trim() !== card.answer.trim();
+
+  const canSave = dirty && !saving && !saved && q.trim() && a.trim();
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="edit-card-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="ecm-header">
-          <div className="ecm-title-row">
-            <div className="ecm-icon">✏️</div>
-            <div>
-              <div className="ecm-title">Edit flashcard</div>
-              <div className="ecm-sub">Changes are saved to your account</div>
-            </div>
-          </div>
-          <button className="ecm-close" onClick={onClose}>
-            ✕
-          </button>
-        </div>
-
-        <div className="ecm-body">
-          <div className="ecm-field">
-            <div className="ecm-field-header">
-              <label className="ecm-label">Question</label>
-              <span
-                className={`ecm-char${q.length > charLimitQ ? " over" : ""}`}
-              >
-                {q.length}/{charLimitQ}
-              </span>
-            </div>
-            <textarea
-              className="ecm-textarea"
-              rows={4}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Enter the question…"
-              maxLength={charLimitQ}
-              autoFocus
-            />
-          </div>
-
-          <div className="ecm-field">
-            <div className="ecm-field-header">
-              <label className="ecm-label">Answer</label>
-              <span
-                className={`ecm-char${a.length > charLimitA ? " over" : ""}`}
-              >
-                {a.length}/{charLimitA}
-              </span>
-            </div>
-            <textarea
-              className="ecm-textarea"
-              rows={5}
-              value={a}
-              onChange={(e) => setA(e.target.value)}
-              placeholder="Enter the answer…"
-              maxLength={charLimitA}
-            />
-          </div>
-        </div>
-
-        <div className="ecm-footer">
-          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-teal"
-            onClick={save}
-            disabled={saving || !q.trim() || !a.trim()}
+    <>
+      <style>{`
+        @keyframes ecmFadeIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes ecmSlideUp { from { opacity:0;transform:translateY(22px) scale(.96) } to { opacity:1;transform:none } }
+        .ecm-ta:focus { border-color:#1a8a85 !important; box-shadow:0 0 0 3px rgba(26,138,133,.18) !important; outline:none; }
+        .ecm-cancel:hover { background:var(--teal-ll,#e6f4f3) !important; }
+      `}</style>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000,
+          background: "rgba(5,32,31,.58)",
+          backdropFilter: "blur(7px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1rem",
+          animation: "ecmFadeIn .18s ease",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "var(--card,#fff)",
+            borderRadius: 24,
+            boxShadow:
+              "0 28px 90px rgba(5,32,31,.24),0 4px 18px rgba(5,32,31,.1)",
+            width: "100%",
+            maxWidth: 560,
+            maxHeight: "92vh",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            animation: "ecmSlideUp .24s cubic-bezier(.34,1.3,.64,1)",
+          }}
+        >
+          {/* ── Header ── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "1.25rem 1.5rem 1rem",
+              borderBottom: "1.5px solid var(--teal-ll,#d4ecea)",
+            }}
           >
-            {saving ? (
-              <>
-                <span className="spin" /> Saving…
-              </>
-            ) : (
-              "Save changes"
-            )}
-          </button>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}
+            >
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 13,
+                  flexShrink: 0,
+                  background: "linear-gradient(135deg,#e6f4f3,#c6e8e6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.35rem",
+                }}
+              >
+                ✏️
+              </div>
+              <div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontWeight: 900,
+                    fontSize: "1.05rem",
+                    color: "var(--ink)",
+                  }}
+                >
+                  Edit flashcard
+                </p>
+                <p
+                  style={{
+                    margin: "2px 0 0",
+                    fontSize: ".74rem",
+                    fontWeight: 600,
+                    color: "var(--ink3)",
+                  }}
+                >
+                  Changes sync to your account
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                border: "1.5px solid var(--teal-ll,#d4ecea)",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: ".9rem",
+                color: "var(--ink2)",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* ── Live preview ── */}
+          <div
+            style={{
+              display: "flex",
+              gap: "0.75rem",
+              alignItems: "stretch",
+              padding: "1rem 1.5rem",
+              background:
+                "linear-gradient(to bottom,var(--teal-ll,#e6f4f3) 0%,transparent 100%)",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                borderRadius: 14,
+                padding: "0.8rem 1rem",
+                minWidth: 0,
+                background: "linear-gradient(135deg,#0a5c59 0%,#1a8a85 100%)",
+                boxShadow: "0 4px 14px rgba(10,92,89,.22)",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: ".62rem",
+                  fontWeight: 900,
+                  letterSpacing: ".1em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,.6)",
+                }}
+              >
+                Question
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: ".83rem",
+                  fontWeight: 600,
+                  color: "#fff",
+                  lineHeight: 1.45,
+                  wordBreak: "break-word",
+                }}
+              >
+                {q || <em style={{ opacity: 0.6 }}>Question preview…</em>}
+              </p>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                color: "var(--ink3)",
+                fontSize: "1.1rem",
+                flexShrink: 0,
+              }}
+            >
+              →
+            </div>
+            <div
+              style={{
+                flex: 1,
+                borderRadius: 14,
+                padding: "0.8rem 1rem",
+                minWidth: 0,
+                background: "linear-gradient(135deg,#1e3a6e 0%,#2563c4 100%)",
+                boxShadow: "0 4px 14px rgba(30,58,110,.22)",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: ".62rem",
+                  fontWeight: 900,
+                  letterSpacing: ".1em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,.6)",
+                }}
+              >
+                Answer
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: ".83rem",
+                  fontWeight: 600,
+                  color: "#fff",
+                  lineHeight: 1.45,
+                  wordBreak: "break-word",
+                }}
+              >
+                {a || <em style={{ opacity: 0.6 }}>Answer preview…</em>}
+              </p>
+            </div>
+          </div>
+
+          {/* ── Fields ── */}
+          <div
+            style={{
+              padding: "0.5rem 1.5rem 1rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+            }}
+          >
+            {/* Question */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 6,
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 800,
+                    fontSize: ".84rem",
+                    color: "var(--ink)",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "#0a5c59",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: ".7rem",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Q
+                  </span>
+                  Question
+                </label>
+                <span
+                  style={{
+                    fontSize: ".7rem",
+                    fontWeight: 700,
+                    color:
+                      q.length >= charLimitQ
+                        ? "#c0392b"
+                        : q.length > charLimitQ * 0.9
+                          ? "#e67e22"
+                          : "var(--ink3)",
+                  }}
+                >
+                  {q.length}/{charLimitQ}
+                </span>
+              </div>
+              <textarea
+                className="ecm-ta"
+                rows={3}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="What do you want to be asked?"
+                maxLength={charLimitQ}
+                autoFocus
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  border: "1.5px solid var(--teal-ll,#d4ecea)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  fontSize: ".88rem",
+                  fontWeight: 600,
+                  color: "var(--ink)",
+                  background: "var(--card,#fff)",
+                  resize: "vertical",
+                  lineHeight: 1.55,
+                  fontFamily: "inherit",
+                  transition: "border-color .15s,box-shadow .15s",
+                }}
+              />
+              <div
+                style={{
+                  height: 3,
+                  borderRadius: 99,
+                  marginTop: 4,
+                  background: "var(--teal-ll,#e6f4f3)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${qPct}%`,
+                    borderRadius: 99,
+                    background: "#1a8a85",
+                    transition: "width .3s",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "var(--teal-ll,#d4ecea)",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: ".85rem",
+                  color: "var(--ink3)",
+                  fontWeight: 700,
+                }}
+              >
+                ↓
+              </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "var(--teal-ll,#d4ecea)",
+                }}
+              />
+            </div>
+
+            {/* Answer */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 6,
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 800,
+                    fontSize: ".84rem",
+                    color: "var(--ink)",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "#1e3a6e",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: ".7rem",
+                      fontWeight: 900,
+                    }}
+                  >
+                    A
+                  </span>
+                  Answer
+                </label>
+                <span
+                  style={{
+                    fontSize: ".7rem",
+                    fontWeight: 700,
+                    color:
+                      a.length >= charLimitA
+                        ? "#c0392b"
+                        : a.length > charLimitA * 0.9
+                          ? "#e67e22"
+                          : "var(--ink3)",
+                  }}
+                >
+                  {a.length}/{charLimitA}
+                </span>
+              </div>
+              <textarea
+                className="ecm-ta"
+                rows={4}
+                value={a}
+                onChange={(e) => setA(e.target.value)}
+                placeholder="What is the correct answer?"
+                maxLength={charLimitA}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  border: "1.5px solid var(--teal-ll,#d4ecea)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  fontSize: ".88rem",
+                  fontWeight: 600,
+                  color: "var(--ink)",
+                  background: "var(--card,#fff)",
+                  resize: "vertical",
+                  lineHeight: 1.55,
+                  fontFamily: "inherit",
+                  transition: "border-color .15s,box-shadow .15s",
+                }}
+              />
+              <div
+                style={{
+                  height: 3,
+                  borderRadius: 99,
+                  marginTop: 4,
+                  background: "var(--teal-ll,#e6f4f3)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${aPct}%`,
+                    borderRadius: 99,
+                    background: "#2563c4",
+                    transition: "width .3s",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Footer ── */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              padding: "1rem 1.5rem 1.25rem",
+              borderTop: "1.5px solid var(--teal-ll,#d4ecea)",
+            }}
+          >
+            <button
+              className="ecm-cancel"
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                padding: "9px 20px",
+                borderRadius: 10,
+                fontWeight: 700,
+                fontSize: ".87rem",
+                border: "1.5px solid var(--teal-ll,#d4ecea)",
+                background: "transparent",
+                color: "var(--ink2)",
+                cursor: "pointer",
+                transition: "background .15s",
+                fontFamily: "inherit",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              disabled={!canSave}
+              style={{
+                padding: "9px 22px",
+                borderRadius: 10,
+                fontWeight: 800,
+                fontSize: ".87rem",
+                border: "none",
+                fontFamily: "inherit",
+                background: saved
+                  ? "linear-gradient(135deg,#16a34a,#15803d)"
+                  : canSave
+                    ? "linear-gradient(135deg,#1a8a85,#0a5c59)"
+                    : "var(--teal-ll,#d4ecea)",
+                color: canSave || saved ? "#fff" : "var(--ink3)",
+                cursor: canSave ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "background .2s",
+              }}
+            >
+              {saved ? (
+                "✓ Saved!"
+              ) : saving ? (
+                <>
+                  <span className="spin" /> Saving…
+                </>
+              ) : (
+                "💾 Save changes"
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

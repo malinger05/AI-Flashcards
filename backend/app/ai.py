@@ -68,41 +68,76 @@ Generate between 5 and 12 flashcards covering the key concepts visible in the im
 # ── Answer Checking ───────────────────────────────────────────────────────────
 
 ANSWER_CHECK_SYSTEM = (
-    "You are a strict but fair quiz evaluator for students. "
+    "You are a precise quiz evaluator. "
+    "You reward genuine understanding and correct facts. "
+    "You are lenient about wording but strict about factual substance. "
     "You reply ONLY with a JSON object — no other text whatsoever."
 )
 
-ANSWER_CHECK_PROMPT = """Evaluate whether the student's answer is correct.
+ANSWER_CHECK_PROMPT = """Compare the student's answer to the correct answer and decide: correct, partial, or wrong.
 
-Question: {question}
+Question:       {question}
 Correct answer: {correct_answer}
-Student's answer: {user_answer}
+Student answer: {user_answer}
 
-Evaluation criteria (in order of importance):
-1. CORE CONCEPT: Does the student's answer capture the essential meaning of the correct answer?
-2. COMPLETENESS: For multi-part answers, does the student cover the main point (minor omissions are OK)?
-3. ACCURACY: Is everything the student said factually correct? Partially wrong details matter.
-4. WORDING: Synonyms, paraphrasing, abbreviations, and different sentence structure are all fine.
-5. TYPOS / CASE: Ignore spelling mistakes and capitalisation differences.
+━━━ WHAT TO CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Mark as CORRECT if:
-- The student clearly knows the concept, even with different wording.
-- The student's answer is a reasonable subset of the correct answer covering the key idea.
-- Minor inaccuracies that do not change the core meaning.
+A) FACTS — Does the student's answer assert the same key facts as the correct answer?
+   - Synonyms and paraphrases are fine ("expansion" = "Lebensraum concept", "parliament" = "legislature").
+   - Different word order, grammar, typos → ignore.
+   - BUT: wrong facts, wrong direction, wrong entity, wrong era → penalise.
 
-Mark as PARTIAL if:
-- The student shows partial understanding but misses a significant part of the correct answer.
-- The answer is on the right track but contains a notable factual error.
+B) COMPLETENESS — Does the student cover the essential substance?
+   - A correct answer can be shorter than the model answer as long as the key claim is there.
+   - Missing a minor qualifier ("in Eastern Europe" when the core "Lebensraum / living space" IS present) → still CORRECT.
+   - But a vague answer that could describe many things ("it was a law that changed things") → WRONG, not PARTIAL.
+   - Vagueness test: could this answer describe a dozen different things? If yes → WRONG.
 
-Mark as WRONG if:
-- The core concept is absent or contradicted.
-- The answer is completely unrelated.
-- The answer is so vague it provides no real information.
+━━━ THREE VERDICTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Return ONLY this JSON (no markdown, no explanation):
+CORRECT — The student's answer captures the same factual substance as the correct answer,
+  even if phrased differently or slightly shorter.
+
+PARTIAL — The student is clearly on the right topic and has some correct facts,
+  BUT is missing a significant factual element that changes or substantially
+  reduces the meaning, OR contains a notable factual error alongside correct parts.
+  Use PARTIAL sparingly — only when the answer is genuinely half-right, not just brief.
+
+WRONG  — The student's answer is factually incorrect, too vague to demonstrate knowledge,
+  completely off-topic, or essentially empty of real information.
+
+━━━ CALIBRATION EXAMPLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What was the Enabling Act of 1933?
+Correct: A law that gave Hitler dictatorial powers and effectively ended the Weimar Republic's democratic system.
+"A law that gave Hitler total power over Germany"                      → CORRECT  (same substance, different words)
+"It allowed Hitler to pass laws without the Reichstag"                → CORRECT  (correctly describes the mechanism)
+"A law that transformed Weimar Germany into Nazi Germany"             → PARTIAL  (right context, but no mention of HOW — dictatorial powers)
+"A law about enabling the Nazi party"                                 → WRONG    (too vague, no specific claim)
+"It was a peace treaty signed after WWI"                              → WRONG    (factually wrong)
+
+Q: What is osmosis?
+Correct: Movement of water molecules from low to high solute concentration through a semi-permeable membrane.
+"Water moving from dilute to concentrated solution across a membrane" → CORRECT  (same meaning, shorter)
+"Water moving through a membrane"                                     → WRONG    (no direction — too vague, defines many things)
+"Movement of particles from high to low concentration"                → PARTIAL  (direction inverted AND particles ≠ water only)
+
+Q: What was Hitler's goal for Germany?
+Correct: Lebensraum — living space for the German people in Eastern Europe.
+"To expand German territory into Eastern Europe"                      → CORRECT  (captures Lebensraum concept and direction)
+"To expand Germany's territory"                                       → PARTIAL  (right idea but missing the Eastern Europe direction, which is the key specific claim)
+"To make Germany great again"                                         → WRONG    (too vague, no factual content)
+
+━━━ REASON FIELD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For PARTIAL: name exactly what factual piece is missing or wrong.
+For WRONG: state briefly why it fails (too vague / factually wrong / off-topic).
+For CORRECT: keep reason empty ("").
+
+Return ONLY this JSON:
 {{
   "verdict": "correct" | "partial" | "wrong",
-  "reason": "one short sentence explaining why"
+  "reason": "specific explanation — empty string if correct"
 }}"""
 
 
