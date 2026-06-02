@@ -59,3 +59,22 @@ class StudySessionResult(Base):
     study_session_id = Column(Integer, ForeignKey("study_sessions.id"), nullable=False, index=True)
     flashcard_id     = Column(Integer, ForeignKey("flashcards.id"), nullable=False)
     correct          = Column(Integer, nullable=False)  # 1 = correct, 0 = wrong
+
+
+# ── Deck system ───────────────────────────────────────────────────────────────
+
+class Deck(Base):
+    """Named collection of flashcards belonging to a user."""
+    __tablename__ = "decks"
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name       = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class DeckCard(Base):
+    """Many-to-many join between Deck and Flashcard."""
+    __tablename__ = "deck_cards"
+    id           = Column(Integer, primary_key=True, index=True)
+    deck_id      = Column(Integer, ForeignKey("decks.id"), nullable=False, index=True)
+    flashcard_id = Column(Integer, ForeignKey("flashcards.id"), nullable=False)

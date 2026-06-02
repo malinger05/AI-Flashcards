@@ -81,7 +81,6 @@ export default function QuizTab({ savedCards }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not submit answer.");
-      // AnswerResult includes correct_answer for the feedback panel after submit.
       setFeedback(data);
       setIsLast(data.is_last);
       setPhase("feedback");
@@ -138,11 +137,26 @@ export default function QuizTab({ savedCards }) {
   const progressPct =
     totalCards > 0
       ? Math.round(
-          // In feedback phase, treat current question as completed for progress UI.
           ((cardIndex + (phase === "feedback" ? 1 : 0)) / totalCards) * 100,
         )
       : 0;
 
+  // ── Verdict helpers ───────────────────────────────────────────────────────
+  function verdictClass(fb) {
+    if (!fb) return "";
+    if (fb.verdict === "correct") return "correct";
+    if (fb.verdict === "partial") return "partial";
+    return "wrong";
+  }
+
+  function verdictLabel(fb) {
+    if (!fb) return "";
+    if (fb.verdict === "correct") return "✓ Correct!";
+    if (fb.verdict === "partial") return "◑ Partially correct";
+    return "✗ Not quite";
+  }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
   if (phase === "setup")
     return (
       <div className="tab-pane center-pane">
@@ -150,7 +164,7 @@ export default function QuizTab({ savedCards }) {
           <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📝</div>
           <h2>Quiz Mode</h2>
           <p>
-            Type your answers and get instant feedback.
+            Type your answers — AI judges them by meaning, not exact wording.
             <br />
             Cards you miss more often appear more frequently.
           </p>
@@ -275,7 +289,8 @@ export default function QuizTab({ savedCards }) {
         </div>
       </div>
     );
-// SCRUM-49: Show end-of-quiz summary (score + correct/wrong/total).
+
+  // ── Summary ───────────────────────────────────────────────────────────────
   if (phase === "summary" && summary) {
     const pct = summary.score_pct;
     return (
@@ -325,6 +340,7 @@ export default function QuizTab({ savedCards }) {
     );
   }
 
+  // ── Question / Feedback ───────────────────────────────────────────────────
   return (
     <div className="tab-pane">
       <div className="smeta">
@@ -370,23 +386,27 @@ export default function QuizTab({ savedCards }) {
           )}
         </div>
         {err && <p className="msg-err">{err}</p>}
+
         {phase === "feedback" && feedback && (
-          <div
-            className={`feedback-box ${feedback.correct ? "correct" : "wrong"}`}
-          >
-            <p className="feedback-verdict">
-              {feedback.correct ? "✓ Correct!" : "✗ Not quite"}
-            </p>
+          <div className={`feedback-box ${verdictClass(feedback)}`}>
+            <p className="feedback-verdict">{verdictLabel(feedback)}</p>
+
+            {/* AI reason — shown for partial and wrong */}
+            {feedback.reason && feedback.verdict !== "correct" && (
+              <p className="feedback-reason">{feedback.reason}</p>
+            )}
+
             <p className="feedback-ans">
               <strong>Correct answer:</strong> {feedback.correct_answer}
             </p>
-            {!feedback.correct && (
+            {feedback.verdict !== "correct" && (
               <p className="feedback-ans" style={{ marginTop: 4 }}>
                 <strong>Your answer:</strong> {feedback.user_answer}
               </p>
             )}
           </div>
         )}
+
         {phase === "feedback" && (
           <button
             className="btn btn-teal"
@@ -415,7 +435,7 @@ export default function QuizTab({ savedCards }) {
           fontWeight: 600,
         }}
       >
-        Press Enter to submit · Enter again to navigate to the next question
+        Press Enter to submit · Enter again to navigate
       </p>
     </div>
   );

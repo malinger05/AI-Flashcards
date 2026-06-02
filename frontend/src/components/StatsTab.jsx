@@ -7,90 +7,158 @@ function EditCardModal({ card, onSave, onClose }) {
   const [q, setQ] = useState(card.question);
   const [a, setA] = useState(card.answer);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function save() {
     if (!q.trim() || !a.trim()) return;
     setSaving(true);
     await onSave(card.id, q.trim(), a.trim());
     setSaving(false);
-    onClose();
+    setSaved(true);
+    setTimeout(() => onClose(), 700);
   }
 
   const charLimitQ = 300;
   const charLimitA = 500;
+  const qPct = Math.min((q.length / charLimitQ) * 100, 100);
+  const aPct = Math.min((a.length / charLimitA) * 100, 100);
+  const dirty =
+    q.trim() !== card.question.trim() || a.trim() !== card.answer.trim();
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="edit-card-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="ecm-overlay" onClick={onClose}>
+      <div className="ecm-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
         <div className="ecm-header">
-          <div className="ecm-title-row">
-            <div className="ecm-icon">✏️</div>
+          <div className="ecm-header-left">
+            <div className="ecm-header-icon">✏️</div>
             <div>
-              <div className="ecm-title">Edit flashcard</div>
-              <div className="ecm-sub">Changes are saved to your account</div>
+              <h2 className="ecm-title">Edit flashcard</h2>
+              <p className="ecm-subtitle">Changes sync to your account</p>
             </div>
           </div>
-          <button className="ecm-close" onClick={onClose}>
+          <button className="ecm-close-btn" onClick={onClose}>
             ✕
           </button>
         </div>
 
+        {/* Live preview */}
+        <div className="ecm-preview-strip">
+          <div className="ecm-preview-card ecm-preview-q">
+            <span className="ecm-preview-lbl">Q</span>
+            <p className="ecm-preview-txt">{q || "Question preview…"}</p>
+          </div>
+          <div className="ecm-preview-arrow">→</div>
+          <div className="ecm-preview-card ecm-preview-a">
+            <span className="ecm-preview-lbl">A</span>
+            <p className="ecm-preview-txt">{a || "Answer preview…"}</p>
+          </div>
+        </div>
+
+        {/* Fields */}
         <div className="ecm-body">
           <div className="ecm-field">
-            <div className="ecm-field-header">
-              <label className="ecm-label">Question</label>
+            <div className="ecm-field-top">
+              <label className="ecm-label">
+                <span className="ecm-badge ecm-badge-q">Q</span>
+                Question
+              </label>
               <span
-                className={`ecm-char${q.length > charLimitQ ? " over" : ""}`}
+                className={
+                  "ecm-char-count" +
+                  (q.length > charLimitQ * 0.9 ? " warn" : "") +
+                  (q.length >= charLimitQ ? " over" : "")
+                }
               >
                 {q.length}/{charLimitQ}
               </span>
             </div>
-            <textarea
-              className="ecm-textarea"
-              rows={4}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Enter the question…"
-              maxLength={charLimitQ}
-              autoFocus
-            />
+            <div className="ecm-textarea-wrap">
+              <textarea
+                className="ecm-textarea"
+                rows={3}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="What do you want to be asked?"
+                maxLength={charLimitQ}
+                autoFocus
+              />
+              <div className="ecm-bar">
+                <div
+                  className="ecm-bar-fill ecm-bar-q"
+                  style={{ width: qPct + "%" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="ecm-sep">
+            <div className="ecm-sep-line" />
+            <span className="ecm-sep-ico">↓</span>
+            <div className="ecm-sep-line" />
           </div>
 
           <div className="ecm-field">
-            <div className="ecm-field-header">
-              <label className="ecm-label">Answer</label>
+            <div className="ecm-field-top">
+              <label className="ecm-label">
+                <span className="ecm-badge ecm-badge-a">A</span>
+                Answer
+              </label>
               <span
-                className={`ecm-char${a.length > charLimitA ? " over" : ""}`}
+                className={
+                  "ecm-char-count" +
+                  (a.length > charLimitA * 0.9 ? " warn" : "") +
+                  (a.length >= charLimitA ? " over" : "")
+                }
               >
                 {a.length}/{charLimitA}
               </span>
             </div>
-            <textarea
-              className="ecm-textarea"
-              rows={5}
-              value={a}
-              onChange={(e) => setA(e.target.value)}
-              placeholder="Enter the answer…"
-              maxLength={charLimitA}
-            />
+            <div className="ecm-textarea-wrap">
+              <textarea
+                className="ecm-textarea"
+                rows={4}
+                value={a}
+                onChange={(e) => setA(e.target.value)}
+                placeholder="What is the correct answer?"
+                maxLength={charLimitA}
+              />
+              <div className="ecm-bar">
+                <div
+                  className="ecm-bar-fill ecm-bar-a"
+                  style={{ width: aPct + "%" }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Footer */}
         <div className="ecm-footer">
-          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>
+          <button
+            className="ecm-btn-cancel"
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancel
           </button>
           <button
-            className="btn btn-teal"
+            className={
+              "ecm-btn-save" +
+              (saved ? " saved" : "") +
+              (!dirty ? " unchanged" : "")
+            }
             onClick={save}
-            disabled={saving || !q.trim() || !a.trim()}
+            disabled={saving || !q.trim() || !a.trim() || !dirty}
           >
-            {saving ? (
+            {saved ? (
+              "✓ Saved!"
+            ) : saving ? (
               <>
                 <span className="spin" /> Saving…
               </>
             ) : (
-              "Save changes"
+              "💾 Save changes"
             )}
           </button>
         </div>
@@ -502,43 +570,59 @@ export default function SavedTab({
               {filtered.map((c) => {
                 const id = c.id;
                 const sel = selected.has(id);
+                const editing = editingId === id;
                 return (
                   <div
-                    className={`scard teal-card${sel ? " selected" : ""}`}
+                    className={`scard teal-card${sel ? " selected" : ""}${editing ? " editing" : ""}`}
                     key={id}
-                    onClick={() => toggleCard(id)}
+                    onClick={() => {
+                      if (!editing) toggleCard(id);
+                    }}
                   >
-                    <div className="sel-check">{sel ? "✓" : ""}</div>
+                    {!editing && (
+                      <div className="sel-check">{sel ? "✓" : ""}</div>
+                    )}
                     <Doodle />
-                    <div className="scard-in">
-                      <div>
-                        <p className="sq">{c.question}</p>
-                        <p className="sa">{c.answer}</p>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
+                    {editing ? (
+                      <CardEditor
+                        card={c}
+                        onSave={async (id, q, a) => {
+                          await onEdit(id, q, a);
+                          setEditingId(null);
                         }}
-                      >
-                        {c.created_at && (
-                          <p className="sdt">
-                            {new Date(c.created_at).toLocaleDateString()}
-                          </p>
-                        )}
-                        <button
-                          className="card-edit-btn"
-                          title="Edit card"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingId(id);
+                        onCancel={() => setEditingId(null)}
+                      />
+                    ) : (
+                      <div className="scard-in">
+                        <div>
+                          <p className="sq">{c.question}</p>
+                          <p className="sa">{c.answer}</p>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
                           }}
                         >
-                          ✏️
-                        </button>
+                          {c.created_at && (
+                            <p className="sdt">
+                              {new Date(c.created_at).toLocaleDateString()}
+                            </p>
+                          )}
+                          <button
+                            className="card-edit-btn"
+                            title="Edit card"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingId(id);
+                            }}
+                          >
+                            ✏️
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}

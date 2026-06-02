@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -39,6 +40,11 @@ class FlashcardBase(BaseModel):
 class FlashcardCreate(FlashcardBase):
     pass
 
+class FlashcardUpdate(BaseModel):
+    """Partial update — both fields optional so callers can patch just one."""
+    question: Optional[str] = Field(None, min_length=1)
+    answer:   Optional[str] = Field(None, min_length=1)
+
 class FlashcardOut(FlashcardBase):
     id:            int
     correct_count: int
@@ -68,6 +74,9 @@ class AnswerRequest(BaseModel):
 
 class AnswerResult(BaseModel):
     correct:        bool
+    partial:        bool = False
+    verdict:        str  = "correct"
+    reason:         str  = ""
     correct_answer: str
     user_answer:    str
     session_id:     int
@@ -111,6 +120,25 @@ class StudySessionResultOut(BaseModel):
     question:     str
     answer:       str
     deleted:      bool = False
+
+    class Config:
+        from_attributes = True
+
+
+# ── Decks ─────────────────────────────────────────────────────────────────────
+
+class DeckCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+
+class DeckAddCards(BaseModel):
+    flashcard_ids: list[int] = Field(..., min_length=1)
+
+class DeckOut(BaseModel):
+    id:            int
+    name:          str
+    card_count:    int = 0
+    flashcard_ids: set[int] = Field(default_factory=set)
+    created_at:    datetime
 
     class Config:
         from_attributes = True

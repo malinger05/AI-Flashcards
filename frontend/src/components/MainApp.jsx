@@ -4,6 +4,49 @@ import GenerateTab from "./GenerateTab";
 import StudyTab from "./StudyTab";
 import QuizTab from "./QuizTab";
 import SavedTab from "./SavedTab";
+import StatsTab from "./StatsTab";
+
+// ── Dark-mode helper ──────────────────────────────────────────────────────────
+function useDarkMode() {
+  const [dark, setDark] = useState(() => {
+    const stored = localStorage.getItem("fc_dark");
+    if (stored !== null) return stored === "1";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-theme",
+      dark ? "dark" : "light",
+    );
+    localStorage.setItem("fc_dark", dark ? "1" : "0");
+  }, [dark]);
+  return [dark, setDark];
+}
+
+// ── Streak helper (localStorage-based, syncs with study sessions) ─────────────
+function computeStreak(sessions) {
+  if (!sessions.length) return 0;
+  const days = [
+    ...new Set(
+      sessions.map((s) => new Date(s.created_at).toLocaleDateString("en-CA")),
+    ),
+  ].sort((a, b) => (a > b ? -1 : 1));
+
+  const today = new Date().toLocaleDateString("en-CA");
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
+
+  if (days[0] !== today && days[0] !== yesterday) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]);
+    const curr = new Date(days[i]);
+    const diff = (prev - curr) / 86400000;
+    if (diff === 1) streak++;
+    else break;
+  }
+  return streak;
+}
 
 export default function MainApp({ user, onLogout }) {
   const [tab, setTab] = useState("generate");
@@ -16,8 +59,11 @@ export default function MainApp({ user, onLogout }) {
   const [history, setHistory] = useState([]);
   const [sessionCards, setSessionCards] = useState(null);
   const [loadingSessionCards, setLoadingSessionCards] = useState(false);
+  const [decks, setDecks] = useState([]);
+  const [dark, setDark] = useDarkMode();
   const ddRef = useRef(null);
 
+  // Load flashcards
   useEffect(() => {
     apiFetch("/flashcards")
       .then((r) => r.json())
@@ -28,6 +74,7 @@ export default function MainApp({ user, onLogout }) {
       .finally(() => setLoadingCards(false));
   }, []);
 
+  // Load study history
   useEffect(() => {
     apiFetch("/study/history")
       .then((r) => r.json())
@@ -37,6 +84,17 @@ export default function MainApp({ user, onLogout }) {
       .catch(() => {});
   }, []);
 
+  // Load decks
+  useEffect(() => {
+    apiFetch("/decks")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDecks(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close dropdown on outside click
   useEffect(() => {
     function handler(e) {
       if (ddRef.current && !ddRef.current.contains(e.target)) setDdOpen(false);
@@ -53,8 +111,8 @@ export default function MainApp({ user, onLogout }) {
           cards.map((c) => ({ question: c.question, answer: c.answer })),
         ),
       });
-      const saved = await res.json();
-      if (Array.isArray(saved)) setSaved((prev) => [...saved, ...prev]);
+      const data = await res.json();
+      if (Array.isArray(data)) setSaved((prev) => [...data, ...prev]);
     } catch (e) {
       console.error("Failed to save flashcards", e);
     }
@@ -93,12 +151,66 @@ export default function MainApp({ user, onLogout }) {
     setTab(t);
   }
 
+  async function handleEditCard(id, question, answer) {
+    try {
+      const res = await apiFetch(`/flashcards/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ question, answer }),
+      });
+      if (res.ok) {
+        setSaved((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, question, answer } : c)),
+        );
+      }
+    } catch (e) {
+      console.error("Edit failed", e);
+    }
+  }
+
+  async function handleCreateDeck(name) {
+    try {
+      const res = await apiFetch("/decks", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      const deck = await res.json();
+      if (deck.id) setDecks((prev) => [deck, ...prev]);
+    } catch (e) {
+      console.error("Create deck failed", e);
+    }
+  }
+
+  async function handleAddToDeck(deckId, cardIds) {
+    try {
+      await apiFetch(`/decks/${deckId}/cards`, {
+        method: "POST",
+        body: JSON.stringify({ flashcard_ids: cardIds }),
+      });
+      // Refresh decks to get updated card counts
+      const res = await apiFetch("/decks");
+      const data = await res.json();
+      if (Array.isArray(data)) setDecks(data);
+    } catch (e) {
+      console.error("Add to deck failed", e);
+    }
+  }
+
+  async function handleDeleteDeck(deckId) {
+    try {
+      await apiFetch(`/decks/${deckId}`, { method: "DELETE" });
+      setDecks((prev) => prev.filter((d) => d.id !== deckId));
+    } catch (e) {
+      console.error("Delete deck failed", e);
+    }
+  }
+
   const studyCards = customStudy ?? (gen.length ? gen : saved);
+  const streak = computeStreak(history);
   const bestPct = history.length
     ? Math.max(...history.map((s) => s.pct))
     : null;
-  const totalSessions = history.length;
-  const totalCards = history.reduce((a, s) => a + s.total, 0);
+
+  const TABS = ["generate", "study", "quiz", "saved", "stats"];
 
   return (
     <div className="app-shell" onClick={() => setDdOpen(false)}>
@@ -111,26 +223,42 @@ export default function MainApp({ user, onLogout }) {
           </div>
           <span className="tb-name">FlashCards</span>
         </div>
+
         <nav className="tb-nav">
-          {["generate", "study", "quiz", "saved"].map((t) => (
+          {TABS.map((t) => (
             <button
               key={t}
               className={`nav-btn${tab === t ? " on" : ""}`}
               onClick={() => switchTab(t)}
             >
-              {t[0].toUpperCase() + t.slice(1)}
+              {t === "stats" ? "Stats" : t[0].toUpperCase() + t.slice(1)}
             </button>
           ))}
         </nav>
+
         <div
           className="tb-right"
           ref={ddRef}
           onClick={(e) => e.stopPropagation()}
         >
+          {streak > 0 && (
+            <div className="streak-badge" title={`${streak}-day study streak`}>
+              🔥 {streak}
+            </div>
+          )}
+          <button
+            className="dark-toggle"
+            onClick={() => setDark((d) => !d)}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? "☀️" : "🌙"}
+          </button>
           <span className="uname">{user.name.split(" ")[0]}</span>
           <button className="avatar-btn" onClick={() => setDdOpen((d) => !d)}>
             {user.name[0].toUpperCase()}
           </button>
+
           {ddOpen && (
             <div className="acct-dropdown">
               <div className="dd-user">
@@ -209,10 +337,15 @@ export default function MainApp({ user, onLogout }) {
           ) : (
             <SavedTab
               cards={saved}
+              decks={decks}
               onStudySelected={startCustomStudy}
               onDelete={(id) =>
                 setSaved((prev) => prev.filter((c) => c.id !== id))
               }
+              onEdit={handleEditCard}
+              onCreateDeck={handleCreateDeck}
+              onAddToDeck={handleAddToDeck}
+              onDeleteDeck={handleDeleteDeck}
               onExport={() => {
                 const a = document.createElement("a");
                 a.href = URL.createObjectURL(
@@ -225,12 +358,19 @@ export default function MainApp({ user, onLogout }) {
               }}
             />
           ))}
+        {tab === "stats" && (
+          <StatsTab history={history} saved={saved} streak={streak} />
+        )}
       </main>
 
       {/* PROFILE MODAL */}
       {modal === "profile" && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            style={{ maxWidth: 400 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-head">
               <span className="modal-title">Profile</span>
               <button className="modal-close" onClick={() => setModal(null)}>
@@ -238,43 +378,61 @@ export default function MainApp({ user, onLogout }) {
               </button>
             </div>
             <div className="modal-body">
-              <div className="prof-avatar">{user.name[0].toUpperCase()}</div>
-              <p className="prof-name">{user.name}</p>
-              <p className="prof-email">{user.email}</p>
-              <div className="prof-stats">
-                <div className="pstat">
-                  <div className="pstat-val">{totalSessions}</div>
-                  <div className="pstat-lbl">Sessions</div>
-                </div>
-                <div className="pstat">
-                  <div className="pstat-val">{totalCards}</div>
-                  <div className="pstat-lbl">Cards studied</div>
-                </div>
-                <div className="pstat">
-                  <div className="pstat-val">
-                    {bestPct !== null ? `${bestPct}%` : "—"}
-                  </div>
-                  <div className="pstat-lbl">Best score</div>
-                </div>
-              </div>
               <div
-                className="prof-stats"
-                style={{ gridTemplateColumns: "1fr 1fr" }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "1rem",
+                  padding: "1rem 0",
+                }}
               >
-                <div className="pstat">
-                  <div className="pstat-val">{saved.length}</div>
-                  <div className="pstat-lbl">Saved cards</div>
+                <div
+                  className="dd-user-avatar"
+                  style={{ width: 64, height: 64, fontSize: "1.75rem" }}
+                >
+                  {user.name[0].toUpperCase()}
                 </div>
-                <div className="pstat">
-                  <div className="pstat-val">
-                    {history.length
-                      ? Math.round(
-                          history.reduce((a, s) => a + s.pct, 0) /
-                            history.length,
-                        ) + "%"
-                      : "—"}
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      fontSize: "1.1rem",
+                      color: "var(--ink)",
+                    }}
+                  >
+                    {user.name}
                   </div>
-                  <div className="pstat-lbl">Avg score</div>
+                  <div
+                    style={{
+                      fontSize: ".85rem",
+                      color: "var(--ink3)",
+                      marginTop: 4,
+                    }}
+                  >
+                    {user.email}
+                  </div>
+                </div>
+                <div className="rbreak" style={{ marginTop: "1rem" }}>
+                  <div className="rbi t">
+                    <span className="rval">{saved.length}</span>
+                    <span className="rlbl">Cards</span>
+                  </div>
+                  <div className="rbi r">
+                    <span className="rval">{history.length}</span>
+                    <span className="rlbl">Sessions</span>
+                  </div>
+                  <div
+                    className="rbi"
+                    style={{
+                      background: "#fff8e6",
+                      borderRadius: 12,
+                      padding: "10px 18px",
+                    }}
+                  >
+                    <span className="rval">🔥 {streak}</span>
+                    <span className="rlbl">Streak</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -320,7 +478,6 @@ export default function MainApp({ user, onLogout }) {
               </button>
             </div>
             <div className="modal-body">
-              {/* SESSION CARDS VIEW */}
               {sessionCards ? (
                 loadingSessionCards ? (
                   <div
@@ -408,8 +565,7 @@ export default function MainApp({ user, onLogout }) {
                     ))}
                   </div>
                 )
-              ) : /* HISTORY LIST VIEW */
-              history.length === 0 ? (
+              ) : history.length === 0 ? (
                 <div className="hist-empty">
                   <div style={{ fontSize: "2.5rem", marginBottom: ".75rem" }}>
                     📭
