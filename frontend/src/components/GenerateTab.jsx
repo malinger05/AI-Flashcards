@@ -624,10 +624,14 @@ export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
         @keyframes scanMove { from { top:0 } to { top:calc(100% - 3px) } }
         .gen-ta { font-family:inherit; }
         .gen-ta:focus { outline:none; border-color:#1a8a85 !important; box-shadow:0 0 0 3px rgba(26,138,133,.16) !important; }
-        .mode-tab:hover { background:var(--teal-ll,#e6f4f3) !important; }
-        .mode-tab-active { background:linear-gradient(135deg,#0a5c59,#1a8a85) !important; color:#fff !important; border-color:transparent !important; }
+        .mode-tab:hover { background:var(--teal-ll) !important; }
+        .mode-tab-active { background:linear-gradient(135deg,var(--teal-dd),var(--teal-d)) !important; color:#fff !important; border-color:transparent !important; }
         .mode-tab-active svg { stroke:#fff !important; }
         .mode-tab-active .mode-desc { color:rgba(255,255,255,.7) !important; }
+        [data-theme="dark"] .mode-tab { background:var(--bg2) !important; border-color:var(--border) !important; color:var(--ink) !important; }
+        [data-theme="dark"] .mode-tab:hover { background:var(--bg3) !important; }
+        [data-theme="dark"] .mode-tab-active { background:linear-gradient(135deg,#0f766e,#14b8a6) !important; }
+        [data-theme="dark"] .gen-ta:focus { border-color:var(--teal-d) !important; box-shadow:0 0 0 3px rgba(20,184,166,.2) !important; }
         .gen-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 24px rgba(10,92,89,.28) !important; }
         .gen-btn:active:not(:disabled) { transform:translateY(0); }
         .scan-line { animation: scanMove 1.6s ease-in-out infinite alternate; }
@@ -745,8 +749,8 @@ const css = {
     gap: "0.65rem",
     padding: "0.9rem 1.1rem",
     borderRadius: 14,
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
-    background: "var(--card, #fff)",
+    border: "1.5px solid var(--border)",
+    background: "var(--bg2)",
     cursor: "pointer",
     textAlign: "left",
     transition:
@@ -786,8 +790,8 @@ const css = {
 
   // Panel
   panel: {
-    background: "var(--card, #fff)",
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    background: "var(--bg2)",
+    border: "1.5px solid var(--border)",
     borderRadius: 20,
     padding: "1.75rem",
     boxShadow: "0 4px 20px rgba(10,92,89,.07)",
@@ -821,13 +825,13 @@ const css = {
   textarea: {
     width: "100%",
     boxSizing: "border-box",
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    border: "1.5px solid var(--border)",
     borderRadius: "12px 12px 0 0",
     padding: "14px 16px",
     fontSize: ".9rem",
     fontWeight: 600,
     color: "var(--ink)",
-    background: "var(--card, #fff)",
+    background: "var(--bg2)",
     resize: "vertical",
     lineHeight: 1.65,
     transition: "border-color .15s, box-shadow .15s",
@@ -873,7 +877,7 @@ const css = {
   },
   dropZoneHasFile: {
     border: "2px solid #1a8a85",
-    background: "var(--card, #fff)",
+    background: "var(--bg2)",
     cursor: "default",
   },
   dropInner: {
@@ -888,7 +892,7 @@ const css = {
     width: 64,
     height: 64,
     borderRadius: 18,
-    background: "var(--card, #fff)",
+    background: "var(--bg2)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -950,7 +954,7 @@ const css = {
     width: 32,
     height: 32,
     borderRadius: 8,
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    border: "1.5px solid var(--border)",
     background: "transparent",
     color: "var(--ink2)",
     cursor: "pointer",
@@ -975,7 +979,7 @@ const css = {
     fontWeight: 700,
     padding: "3px 10px",
     borderRadius: 99,
-    background: "var(--card, #fff)",
+    background: "var(--bg2)",
     color: "var(--ink2)",
     border: "1px solid var(--teal-ll, #d4ecea)",
   },
@@ -1080,7 +1084,7 @@ const css = {
     gap: "0.4rem",
     padding: "11px 20px",
     borderRadius: 12,
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    border: "1.5px solid var(--border)",
     background: "transparent",
     color: "var(--ink2)",
     fontWeight: 700,
@@ -1119,7 +1123,7 @@ const css = {
   errBox: {
     padding: "10px 14px",
     borderRadius: 10,
-    background: "#fff5f5",
+    background: "var(--surface-err)",
     border: "1.5px solid #fecaca",
     color: "#b91c1c",
     fontSize: ".85rem",
@@ -1137,9 +1141,9 @@ const css = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "1rem 1.5rem",
-    background: "var(--card, #fff)",
+    background: "var(--bg2)",
     borderRadius: 16,
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    border: "1.5px solid var(--border)",
     boxShadow: "0 2px 10px rgba(10,92,89,.06)",
     flexWrap: "wrap",
     gap: "0.75rem",
@@ -1166,8 +1170,8 @@ const css = {
     gap: "0.75rem",
   },
   previewCard: {
-    background: "var(--card, #fff)",
-    border: "1.5px solid var(--teal-ll, #d4ecea)",
+    background: "var(--bg2)",
+    border: "1.5px solid var(--border)",
     borderRadius: 16,
     padding: "1rem 1.1rem",
     display: "flex",

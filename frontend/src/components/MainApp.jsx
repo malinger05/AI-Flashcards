@@ -353,6 +353,7 @@ export default function MainApp({ user, onLogout }) {
         {/* S3-007: Ollama offline warning banner */}
         {ollamaDown && !bannerDismissed && (
           <div
+            className="ollama-banner"
             style={{
               display: "flex",
               alignItems: "center",
@@ -360,7 +361,7 @@ export default function MainApp({ user, onLogout }) {
               gap: "0.75rem",
               flexWrap: "wrap",
               padding: "10px 18px",
-              background: "#fffbeb",
+              background: "var(--surface-warn)",
               borderBottom: "2px solid #f59e0b",
               fontSize: ".85rem",
               fontWeight: 700,
@@ -546,9 +547,8 @@ export default function MainApp({ user, onLogout }) {
                     <span className="rlbl">Sessions</span>
                   </div>
                   <div
-                    className="rbi"
+                    className="rbi profile-streak"
                     style={{
-                      background: "#fff8e6",
                       borderRadius: 12,
                       padding: "10px 18px",
                     }}
@@ -628,8 +628,8 @@ export default function MainApp({ user, onLogout }) {
                     {sessionCards.map((c, i) => (
                       <div
                         key={c.flashcard_id}
+                        className={c.correct ? "sess-result ok" : "sess-result bad"}
                         style={{
-                          background: c.correct ? "#f0fdf4" : "#fff5f5",
                           borderRadius: 12,
                           padding: "12px 16px",
                           borderLeft: `4px solid ${c.correct ? "#16a34a" : "#dc2626"}`,

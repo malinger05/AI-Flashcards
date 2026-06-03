@@ -35,7 +35,7 @@ function StatCard({ icon, label, value, sub, accent }) {
   return (
     <div
       style={{
-        background: "var(--card, #fff)",
+        background: "var(--bg2)",
         border: "1.5px solid var(--teal-ll, #d4ecea)",
         borderRadius: 18,
         padding: "1.25rem 1.5rem",
@@ -92,7 +92,7 @@ function SessionRow({ session, index }) {
         alignItems: "center",
         gap: "1rem",
         padding: "14px 16px",
-        background: "var(--card, #fff)",
+        background: "var(--bg2)",
         borderRadius: 14,
         border: "1.5px solid var(--teal-ll, #d4ecea)",
         boxShadow: "0 1px 6px rgba(10,92,89,.04)",
@@ -282,7 +282,7 @@ export default function StatsTab({ history = [], saved = [], streak = 0 }) {
           animation: "fadeUp .35s ease",
         }}
       >
-        <StatCard icon="🔥" label="Current streak" value={`${streak} day${streak !== 1 ? "s" : ""}`} accent="#fff8e6" />
+        <StatCard icon="🔥" label="Current streak" value={`${streak} day${streak !== 1 ? "s" : ""}`} accent="var(--surface-streak)" />
         <StatCard icon="🏆" label="Best score" value={bestPct !== null ? `${bestPct}%` : "—"} accent="#fef9e7" />
         <StatCard icon="🎯" label="Avg accuracy" value={avgPct !== null ? `${avgPct}%` : "—"} sub="across all sessions" accent="#f0f9ff" />
         <StatCard icon="🃏" label="Saved cards" value={totalCards} sub="in your library" accent="#f0fdf4" />
@@ -301,7 +301,7 @@ export default function StatsTab({ history = [], saved = [], streak = 0 }) {
         {/* Overall accuracy breakdown */}
         <div
           style={{
-            background: "var(--card, #fff)",
+            background: "var(--bg2)",
             border: "1.5px solid var(--teal-ll, #d4ecea)",
             borderRadius: 18,
             padding: "1.25rem 1.5rem",
@@ -336,7 +336,7 @@ export default function StatsTab({ history = [], saved = [], streak = 0 }) {
         {/* Sparkline */}
         <div
           style={{
-            background: "var(--card, #fff)",
+            background: "var(--bg2)",
             border: "1.5px solid var(--teal-ll, #d4ecea)",
             borderRadius: 18,
             padding: "1.25rem 1.5rem",
@@ -354,7 +354,7 @@ export default function StatsTab({ history = [], saved = [], streak = 0 }) {
       {/* Score distribution */}
       <div
         style={{
-          background: "var(--card, #fff)",
+          background: "var(--bg2)",
           border: "1.5px solid var(--teal-ll, #d4ecea)",
           borderRadius: 18,
           padding: "1.25rem 1.5rem",

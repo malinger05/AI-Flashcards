@@ -53,7 +53,7 @@ function EditCardModal({ card, onSave, onClose }) {
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: "var(--card,#fff)",
+            background: "var(--bg2)",
             borderRadius: 24,
             boxShadow:
               "0 28px 90px rgba(5,32,31,.24),0 4px 18px rgba(5,32,31,.1)",
@@ -311,7 +311,7 @@ function EditCardModal({ card, onSave, onClose }) {
                   fontSize: ".88rem",
                   fontWeight: 600,
                   color: "var(--ink)",
-                  background: "var(--card,#fff)",
+                  background: "var(--bg2)",
                   resize: "vertical",
                   lineHeight: 1.55,
                   fontFamily: "inherit",
@@ -435,7 +435,7 @@ function EditCardModal({ card, onSave, onClose }) {
                   fontSize: ".88rem",
                   fontWeight: 600,
                   color: "var(--ink)",
-                  background: "var(--card,#fff)",
+                  background: "var(--bg2)",
                   resize: "vertical",
                   lineHeight: 1.55,
                   fontFamily: "inherit",
