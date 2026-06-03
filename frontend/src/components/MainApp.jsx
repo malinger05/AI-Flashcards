@@ -89,7 +89,7 @@ export default function MainApp({ user, onLogout }) {
       .finally(() => setLoadingCards(false));
   }, []);
 
-  // Load study history
+  // SCRUM-94: load study history on mount for stats tab and history modal
   useEffect(() => {
     apiFetch("/study/history")
       .then((r) => r.json())
@@ -304,6 +304,7 @@ export default function MainApp({ user, onLogout }) {
                 >
                   <span className="dd-ico">👤</span> Profile
                 </button>
+                {/* SCRUM-94: profile menu entry — opens study history modal (GET /study/history) */}
                 <button
                   className="dd-btn"
                   onClick={() => {
@@ -510,7 +511,7 @@ export default function MainApp({ user, onLogout }) {
         </div>
       )}
 
-      {/* HISTORY MODAL */}
+      {/* SCRUM-94: study history modal — session list + drill-down to per-card results */}
       {modal === "history" && (
         <div
           className="modal-overlay"
