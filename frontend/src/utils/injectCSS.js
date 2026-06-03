@@ -131,7 +131,12 @@ const CSS = `
 [data-theme="dark"] .auth-page     { background: var(--bg); }
 [data-theme="dark"] .auth-shell    { box-shadow: 0 24px 80px rgba(0,0,0,.45); }
 [data-theme="dark"] .auth-err,
-[data-theme="dark"] .msg-err       { background: var(--surface-err); border-color: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .msg-err,
+[data-theme="dark"] .tab-err-banner,
+[data-theme="dark"] .err-banner    { background: var(--surface-err); border-color: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .stats-strip   { background: var(--bg2); border-color: var(--border); }
+[data-theme="dark"] .stats-strip-cell { border-color: var(--border); }
+[data-theme="dark"] .stats-strip-action:not(:disabled):hover { background: var(--bg3); }
 [data-theme="dark"] .msg-ok        { background: var(--surface-ok); border-color: #14532d; color: #86efac; }
 [data-theme="dark"] .spill.r,
 [data-theme="dark"] .sbtn.r,
@@ -400,6 +405,25 @@ body {
 .rval   { font-size:1.7rem; font-weight:900; }
 .rbi.r .rval { color:#166534; } .rbi.w .rval { color:#991b1b; } .rbi.t .rval { color:var(--teal-d); }
 .rlbl   { font-size:.7rem; font-weight:700; color:var(--ink3); margin-top:2px; }
+
+/* SCRUM-84: dashboard stats strip */
+.stats-strip { display:flex; gap:0; max-width:720px; margin:0 auto 1rem; padding:0 1.25rem; border:2px solid var(--teal-l); border-radius:var(--r2); background:var(--white); overflow:hidden; }
+.stats-strip-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:.75rem .5rem; border:none; background:transparent; font:inherit; border-right:1.5px solid var(--teal-ll); }
+.stats-strip-cell:last-child { border-right:none; }
+.stats-strip-action { cursor:pointer; transition:background .15s; }
+.stats-strip-action:not(:disabled):hover { background:var(--teal-ll); }
+.stats-strip-action.highlight .stats-strip-val { color:var(--violet); }
+.stats-strip-action:disabled { cursor:default; opacity:.85; }
+.stats-strip-val { font-size:1.35rem; font-weight:900; color:var(--teal-d); line-height:1.2; }
+.stats-strip-quiz { font-size:1rem; }
+.stats-strip-lbl { font-size:.68rem; font-weight:700; color:var(--ink3); margin-top:3px; text-transform:uppercase; letter-spacing:.04em; }
+
+/* SCRUM-83: shared tab / guide error banners */
+.tab-err-banner, .err-banner { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin:0 auto 1rem; max-width:720px; padding:.65rem 1rem; background:#fff1f2; border:1.5px solid #fca5a5; color:#b91c1c; border-radius:var(--r2); font-size:.85rem; font-weight:700; }
+.tab-err-banner-msg { flex:1; min-width:0; }
+.tab-err-banner-actions { display:flex; gap:8px; flex-shrink:0; }
+.tab-err-retry, .tab-err-dismiss { padding:4px 12px; border-radius:8px; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; border:1.5px solid #fca5a5; background:transparent; color:#b91c1c; }
+.tab-err-retry:hover, .tab-err-dismiss:hover { background:#fee2e2; }
 
 /* SAVED */
 .sgrid  { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }

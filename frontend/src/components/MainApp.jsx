@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../constants";
 import GenerateTab from "./GenerateTab";
 import StudyTab from "./StudyTab";
@@ -6,8 +6,14 @@ import QuizTab from "./QuizTab";
 import SavedTab from "./SavedTab";
 import StatsTab from "./StatsTab";
 import StudyGuideTab from "./StudyGuideTab";
+import StatsStrip from "./StatsStrip";
+import TabErrorBanner from "./TabErrorBanner";
 import { TabLoading } from "./TabState";
 import { exportFlashcardsJson } from "../utils/exportFlashcards";
+import {
+  getNetworkOrErrorMessage,
+  parseApiResponse,
+} from "../utils/apiErrors";
 
 // ── Dark-mode helper ──────────────────────────────────────────────────────────
 function useDarkMode() {
@@ -63,6 +69,9 @@ export default function MainApp({ user, onLogout }) {
   const [loadingCards, setLoadingCards] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [history, setHistory] = useState([]);
+  const [quizHistory, setQuizHistory] = useState([]);
+  const [loadingQuizHistory, setLoadingQuizHistory] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [sessionCards, setSessionCards] = useState(null);
   const [loadingSessionCards, setLoadingSessionCards] = useState(false);
   const [decks, setDecks] = useState([]);
@@ -85,48 +94,76 @@ export default function MainApp({ user, onLogout }) {
       .catch(() => {});
   }, []);
 
-  // Load flashcards
-  useEffect(() => {
-    apiFetch("/flashcards")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setSaved(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCards(false));
+  const refreshQuizHistory = useCallback(async () => {
+    setLoadingQuizHistory(true);
+    try {
+      const data = await parseApiResponse(await apiFetch("/quiz/history"));
+      if (Array.isArray(data)) setQuizHistory(data);
+    } catch (e) {
+      setLoadError((prev) => prev || getNetworkOrErrorMessage(e));
+    } finally {
+      setLoadingQuizHistory(false);
+    }
   }, []);
+
+  const loadBootstrap = useCallback(async () => {
+    setLoadError("");
+    setLoadingCards(true);
+    setLoadingHistory(true);
+    setLoadingQuizHistory(true);
+
+    const errors = [];
+
+    try {
+      const data = await parseApiResponse(await apiFetch("/flashcards"));
+      if (Array.isArray(data)) setSaved(data);
+    } catch (e) {
+      errors.push(getNetworkOrErrorMessage(e));
+    } finally {
+      setLoadingCards(false);
+    }
+
+    try {
+      const data = await parseApiResponse(await apiFetch("/study/history"));
+      if (Array.isArray(data)) setHistory(data);
+    } catch (e) {
+      errors.push(getNetworkOrErrorMessage(e));
+    } finally {
+      setLoadingHistory(false);
+    }
+
+    try {
+      const data = await parseApiResponse(await apiFetch("/quiz/history"));
+      if (Array.isArray(data)) setQuizHistory(data);
+    } catch (e) {
+      errors.push(getNetworkOrErrorMessage(e));
+    } finally {
+      setLoadingQuizHistory(false);
+    }
+
+    try {
+      const data = await parseApiResponse(await apiFetch("/decks"));
+      if (Array.isArray(data)) setDecks(data);
+    } catch (e) {
+      errors.push(getNetworkOrErrorMessage(e));
+    }
+
+    if (errors.length) setLoadError(errors[0]);
+  }, []);
+
+  useEffect(() => {
+    loadBootstrap();
+  }, [loadBootstrap]);
 
   // SCRUM-80: load spaced-repetition queue for study mode
   useEffect(() => {
     apiFetch("/flashcards?due_only=true")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        const data = await parseApiResponse(r);
         if (Array.isArray(data)) setDueCards(data);
       })
       .catch(() => {});
   }, [saved, history]);
-
-  // SCRUM-94: load study history on mount for stats tab and history modal
-  useEffect(() => {
-    setLoadingHistory(true);
-    apiFetch("/study/history")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setHistory(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingHistory(false));
-  }, []);
-
-  // Load decks
-  useEffect(() => {
-    apiFetch("/decks")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setDecks(data);
-      })
-      .catch(() => {});
-  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -138,23 +175,19 @@ export default function MainApp({ user, onLogout }) {
   }, []);
 
   async function persistSaved(cards) {
-    try {
-      const res = await apiFetch("/flashcards", {
+    const data = await parseApiResponse(
+      await apiFetch("/flashcards", {
         method: "POST",
         body: JSON.stringify(
           cards.map((c) => ({ question: c.question, answer: c.answer })),
         ),
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) setSaved((prev) => [...data, ...prev]);
-    } catch (e) {
-      console.error("Failed to save flashcards", e);
-    }
+      }),
+    );
+    if (Array.isArray(data)) setSaved((prev) => [...data, ...prev]);
   }
 
   async function refreshSaved() {
-    const res = await apiFetch("/flashcards");
-    const data = await res.json();
+    const data = await parseApiResponse(await apiFetch("/flashcards"));
     if (Array.isArray(data)) setSaved(data);
   }
 
@@ -264,6 +297,10 @@ export default function MainApp({ user, onLogout }) {
   const bestPct = history.length
     ? Math.max(...history.map((s) => s.pct))
     : null;
+  const bestQuizPct = quizHistory.length
+    ? Math.max(...quizHistory.map((s) => s.score_pct))
+    : null;
+  const lastQuiz = quizHistory[0] ?? null;
 
   const TABS = ["generate", "study", "quiz", "guide", "saved", "stats"];
 
@@ -365,6 +402,17 @@ export default function MainApp({ user, onLogout }) {
                 >
                   <span className="dd-ico">📊</span> Study history
                 </button>
+                {/* SCRUM-79: quiz history from GET /quiz/history */}
+                <button
+                  className="dd-btn"
+                  onClick={() => {
+                    setModal("quizHistory");
+                    setDdOpen(false);
+                    refreshQuizHistory();
+                  }}
+                >
+                  <span className="dd-ico">📝</span> Quiz history
+                </button>
                 <div className="dd-divider" />
                 <button className="dd-btn red" onClick={onLogout}>
                   <span className="dd-ico">🚪</span> Sign out
@@ -423,6 +471,23 @@ export default function MainApp({ user, onLogout }) {
             </button>
           </div>
         )}
+        <TabErrorBanner
+          message={loadError}
+          onRetry={loadBootstrap}
+          onDismiss={() => setLoadError("")}
+        />
+        <StatsStrip
+          cardCount={saved.length}
+          dueCount={dueCards.length}
+          lastQuiz={lastQuiz}
+          loadingCards={loadingCards}
+          loadingQuiz={loadingQuizHistory}
+          onDueClick={startDueStudy}
+          onQuizHistoryClick={() => {
+            setModal("quizHistory");
+            refreshQuizHistory();
+          }}
+        />
         {tab === "generate" && (
           <GenerateTab
             gen={gen}
@@ -483,6 +548,7 @@ export default function MainApp({ user, onLogout }) {
               remediationLaunch={remediationQuiz}
               onRemediationConsumed={() => setRemediationQuiz(null)}
               onOpenStudyGuide={() => switchTab("guide")}
+              onQuizComplete={refreshQuizHistory}
             />
           ))}
         {tab === "guide" && (
@@ -509,6 +575,10 @@ export default function MainApp({ user, onLogout }) {
               onExport={(cardsToExport) =>
                 exportFlashcardsJson(cardsToExport, "flashcards.json")
               }
+              onImportSaved={async (cards) => {
+                await persistSaved(cards);
+                await refreshSaved();
+              }}
             />
           ))}
         {tab === "stats" &&
@@ -805,6 +875,120 @@ export default function MainApp({ user, onLogout }) {
                               >
                                 View cards →
                               </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SCRUM-79: quiz history modal — list of quiz sessions (GET /quiz/history) */}
+      {modal === "quizHistory" && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div
+            className="modal"
+            style={{ maxWidth: 560 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-head">
+              <span className="modal-title">Quiz history</span>
+              <button className="modal-close" onClick={() => setModal(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              {loadingQuizHistory ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem",
+                    color: "var(--ink3)",
+                    fontWeight: 700,
+                  }}
+                >
+                  Loading quiz history…
+                </div>
+              ) : quizHistory.length === 0 ? (
+                <div className="hist-empty">
+                  <div style={{ fontSize: "2.5rem", marginBottom: ".75rem" }}>
+                    📝
+                  </div>
+                  Complete a quiz to see your history here!
+                </div>
+              ) : (
+                <>
+                  {bestQuizPct !== null && (
+                    <div className="hist-best">
+                      <div className="hist-best-ico">🏆</div>
+                      <div className="hist-best-info">
+                        <div className="hist-best-label">Best quiz score</div>
+                        <div className="hist-best-val">{bestQuizPct}%</div>
+                        <div className="hist-best-sub">
+                          {quizHistory.find((s) => s.score_pct === bestQuizPct)
+                            ?.total ?? 0}{" "}
+                          cards ·{" "}
+                          {new Date(
+                            quizHistory.find(
+                              (s) => s.score_pct === bestQuizPct,
+                            )?.created_at,
+                          ).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="sess-list">
+                    {quizHistory.map((s) => {
+                      const pct = s.score_pct;
+                      const medal =
+                        pct === 100
+                          ? "🥇"
+                          : pct >= 80
+                            ? "🥈"
+                            : pct >= 60
+                              ? "🥉"
+                              : "📝";
+                      const fillColor =
+                        pct >= 70
+                          ? "#1a8a85"
+                          : pct >= 50
+                            ? "#f4845f"
+                            : "#e05252";
+                      return (
+                        <div className="sess-item" key={s.id}>
+                          <div className="sess-medal">{medal}</div>
+                          <div className="sess-bar-wrap">
+                            <div className="sess-top">
+                              <span className="sess-date">
+                                {new Date(s.created_at).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )}
+                              </span>
+                              <span className="sess-pct-lbl">{pct}%</span>
+                            </div>
+                            <div className="sess-track">
+                              <div
+                                className="sess-fill"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: fillColor,
+                                }}
+                              />
+                            </div>
+                            <div className="sess-meta">
+                              ✓ {s.correct} correct · ✗ {s.wrong} wrong ·{" "}
+                              {s.total} total
                             </div>
                           </div>
                         </div>

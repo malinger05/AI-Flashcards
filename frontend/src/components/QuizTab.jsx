@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../constants";
+import { getApiErrorMessage, getNetworkOrErrorMessage } from "../utils/apiErrors";
 import { TabEmpty } from "./TabState";
 
 export default function QuizTab({
@@ -7,6 +8,7 @@ export default function QuizTab({
   remediationLaunch,
   onRemediationConsumed,
   onOpenStudyGuide,
+  onQuizComplete,
 }) {
   const [phase, setPhase] = useState("setup");
   const [count, setCount] = useState(10);
@@ -46,6 +48,11 @@ export default function QuizTab({
     onRemediationConsumed?.();
   }, [remediationLaunch]);
 
+  // SCRUM-79: refresh quiz history in parent after a session completes
+  useEffect(() => {
+    if (phase === "summary" && summary) onQuizComplete?.();
+  }, [phase, summary, onQuizComplete]);
+
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Enter") {
@@ -75,7 +82,7 @@ export default function QuizTab({
         body: JSON.stringify({ flashcard_ids: ids, count }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Could not start quiz.");
+      if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       setSessionId(data.session_id);
       setQuestion(data.question);
       setCardIndex(data.card_index);
@@ -85,7 +92,7 @@ export default function QuizTab({
       setSummary(null);
       setPhase("question");
     } catch (e) {
-      setErr(e.message);
+      setErr(getNetworkOrErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -102,12 +109,12 @@ export default function QuizTab({
         body: JSON.stringify({ session_id: sessionId, user_answer: answer }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Could not submit answer.");
+      if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       setFeedback(data);
       setIsLast(data.is_last);
       setPhase("feedback");
     } catch (e) {
-      setErr(e.message);
+      setErr(getNetworkOrErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -119,7 +126,7 @@ export default function QuizTab({
       try {
         const res = await apiFetch(`/quiz/${sessionId}/summary`);
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Could not load summary.");
+        if (!res.ok) throw new Error(getApiErrorMessage(res, data));
         setSummary(data);
         setPhase("summary");
       } catch (e) {
@@ -133,7 +140,7 @@ export default function QuizTab({
     try {
       const res = await apiFetch(`/quiz/${sessionId}/next`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Could not load next card.");
+      if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       setQuestion(data.question);
       setCardIndex(data.card_index);
       setTotalCards(data.total_cards);
@@ -141,7 +148,7 @@ export default function QuizTab({
       setFeedback(null);
       setPhase("question");
     } catch (e) {
-      setErr(e.message);
+      setErr(getNetworkOrErrorMessage(e));
     } finally {
       setLoading(false);
     }
