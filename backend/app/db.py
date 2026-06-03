@@ -42,6 +42,7 @@ def run_migrations():
         # ── user_sessions ─────────────────────────────────────────────────────
         us_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(user_sessions)")).fetchall()}
 
+        # SCRUM-91: backfill last_used_at for existing deployments
         if "last_used_at" not in us_cols:
             conn.execute(text(
                 "ALTER TABLE user_sessions ADD COLUMN last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP"

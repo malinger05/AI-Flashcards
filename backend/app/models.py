@@ -17,7 +17,8 @@ class UserSession(Base):
     token        = Column(String, unique=True, nullable=False, index=True)
     user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at   = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    # BL-006: updated on every authenticated request; used for session expiry.
+    # BL-006 / SCRUM-91: last activity timestamp — refreshed on every authenticated
+    # request; sessions older than SESSION_MAX_AGE_DAYS are deleted in get_current_user.
     last_used_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
 
 
