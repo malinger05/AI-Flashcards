@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import Doodle from "./Doodle";
 import { apiFetch } from "../constants";
 
-export default function StudyTab({ cards, customLabel, onSessionSaved }) {
+// SCRUM-80: dueOnly — deck is built only from cards returned by GET /flashcards?due_only=true
+export default function StudyTab({ cards, customLabel, dueOnly = false, onSessionSaved }) {
   const [deck, setDeck] = useState([]);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -101,8 +102,12 @@ export default function StudyTab({ cards, customLabel, onSessionSaved }) {
     return (
       <div className="tab-pane center-pane">
         <div className="empty">
-          <div className="empty-ico">🃏</div>
-          <p>Generate or save some cards first, then study here!</p>
+          <div className="empty-ico">{dueOnly ? "✅" : "🃏"}</div>
+          <p>
+            {dueOnly
+              ? "No cards due for review right now. Check back later!"
+              : "Generate or save some cards first, then study here!"}
+          </p>
         </div>
       </div>
     );
@@ -116,13 +121,15 @@ export default function StudyTab({ cards, customLabel, onSessionSaved }) {
             <div className="sdc sdc1" />
             <div className="sdc sdc0" />
           </div>
-          <h2 className="stitle">Ready to study?</h2>
+          <h2 className="stitle">
+            {dueOnly ? "Review due cards" : "Ready to study?"}
+          </h2>
           <p className="ssub">
             {customLabel ?? `${Math.min(cards.length, 12)} cards`} · tap to flip
             · swipe to score
           </p>
           <button className="btn btn-teal lg" onClick={initDeck}>
-            Start session
+            {dueOnly ? "Start due review" : "Start session"}
           </button>
           <p className="shint">
             ← Didn't know &nbsp;·&nbsp; Space to flip &nbsp;·&nbsp; → Got it!

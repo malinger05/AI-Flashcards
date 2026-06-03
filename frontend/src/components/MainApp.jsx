@@ -53,6 +53,8 @@ export default function MainApp({ user, onLogout }) {
   const [saved, setSaved] = useState([]);
   const [gen, setGen] = useState([]);
   const [customStudy, setCustomStudy] = useState(null);
+  const [dueStudy, setDueStudy] = useState(false);
+  const [dueCards, setDueCards] = useState([]);
   const [ddOpen, setDdOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [loadingCards, setLoadingCards] = useState(true);
@@ -88,6 +90,16 @@ export default function MainApp({ user, onLogout }) {
       .catch(() => {})
       .finally(() => setLoadingCards(false));
   }, []);
+
+  // SCRUM-80: load spaced-repetition queue for study mode
+  useEffect(() => {
+    apiFetch("/flashcards?due_only=true")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDueCards(data);
+      })
+      .catch(() => {});
+  }, [saved, history]);
 
   // SCRUM-94: load study history on mount for stats tab and history modal
   useEffect(() => {
@@ -159,10 +171,20 @@ export default function MainApp({ user, onLogout }) {
 
   function startCustomStudy(cards) {
     setCustomStudy(cards);
+    setDueStudy(false);
+    setTab("study");
+  }
+  // SCRUM-80: open study tab with only cards due for spaced repetition review
+  function startDueStudy() {
+    setCustomStudy(null);
+    setDueStudy(true);
     setTab("study");
   }
   function switchTab(t) {
-    if (t !== "study") setCustomStudy(null);
+    if (t !== "study") {
+      setCustomStudy(null);
+      setDueStudy(false);
+    }
     setTab(t);
     // S3-007: re-check health when user opens Generate tab
     if (t === "generate") {
@@ -228,7 +250,9 @@ export default function MainApp({ user, onLogout }) {
     }
   }
 
-  const studyCards = customStudy ?? (gen.length ? gen : saved);
+  const studyCards = dueStudy
+    ? dueCards
+    : customStudy ?? (gen.length ? gen : saved);
   const streak = computeStreak(history);
   const bestPct = history.length
     ? Math.max(...history.map((s) => s.pct))
@@ -383,13 +407,41 @@ export default function MainApp({ user, onLogout }) {
             onStudy={() => switchTab("study")}
           />
         )}
+        {tab === "study" && !dueStudy && dueCards.length > 0 && (
+          <div style={{ padding: "0 1.25rem 0.5rem", maxWidth: 720, margin: "0 auto" }}>
+            <button className="btn btn-violet" onClick={startDueStudy}>
+              {/* SCRUM-80: spaced repetition — study cards whose next_review_at is due */}
+              Review {dueCards.length} due card{dueCards.length !== 1 ? "s" : ""}
+            </button>
+          </div>
+        )}
+        {tab === "study" && dueStudy && (
+          <div style={{ padding: "0.5rem 1.25rem 0", maxWidth: 720, margin: "0 auto" }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: ".85rem" }}
+              onClick={() => setDueStudy(false)}
+            >
+              ← Back to all cards
+            </button>
+          </div>
+        )}
         {tab === "study" && (
           <StudyTab
             cards={studyCards}
+            dueOnly={dueStudy}
             customLabel={
-              customStudy ? `${customStudy.length} selected cards` : null
+              dueStudy
+                ? `${dueCards.length} due for review`
+                : customStudy
+                  ? `${customStudy.length} selected cards`
+                  : null
             }
-            onSessionSaved={onSessionSaved}
+            onSessionSaved={(session) => {
+              onSessionSaved(session);
+              refreshSaved();
+            }}
           />
         )}
         {tab === "quiz" && <QuizTab savedCards={saved} />}
