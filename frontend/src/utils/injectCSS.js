@@ -421,7 +421,15 @@ body {
 .btn-white:hover:not(:disabled)  { background:var(--teal-ll); }
 .empty { text-align:center; padding:4rem 1rem; color:var(--ink3); }
 .empty-ico { font-size:3rem; margin-bottom:1rem; }
-.empty p { font-size:.9rem; font-weight:600; }
+.empty-title { font-size:1.2rem; font-weight:900; color:var(--ink); margin:0 0 .5rem; }
+.empty p { font-size:.9rem; font-weight:600; margin:0; line-height:1.55; }
+.empty-card { text-align:center; padding:2.5rem 1.5rem; background:var(--bg2); border:1.5px solid var(--border); border-radius:var(--r); color:var(--ink3); font-weight:600; font-size:.9rem; line-height:1.55; }
+.tab-loading { display:flex; flex-direction:column; align-items:center; gap:1rem; padding:4rem 1rem; color:var(--ink3); font-weight:700; font-size:.9rem; }
+.tab-loading-spin { width:28px; height:28px; border-width:3px; }
+.gen-options { display:flex; flex-wrap:wrap; gap:1rem 1.5rem; padding:.85rem 1rem; margin-bottom:1.1rem; background:var(--teal-ll); border-radius:12px; border:1px solid var(--teal-l); }
+.gen-opt { display:flex; flex-direction:column; gap:4px; min-width:140px; }
+.gen-opt label { font-size:.72rem; font-weight:800; color:var(--ink3); text-transform:uppercase; letter-spacing:.06em; }
+.gen-opt-select { padding:8px 12px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg2); font-weight:700; font-size:.88rem; color:var(--ink); font-family:inherit; cursor:pointer; }
 
 /* QUIZ */
 .quiz-start-card { background:var(--white); border:2.5px solid var(--teal-l); border-radius:var(--r); padding:2.5rem 2rem; text-align:center; max-width:460px; box-shadow:0 8px 40px rgba(10,92,89,.14); }

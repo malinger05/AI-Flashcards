@@ -1,5 +1,8 @@
 import { useRef, useState } from "react";
 import { apiFetch } from "../constants";
+import { exportFlashcardsJson } from "../utils/exportFlashcards";
+import GenerateOptions from "./GenerateOptions";
+import { TabEmpty } from "./TabState";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -7,8 +10,10 @@ import { apiFetch } from "../constants";
 
 const API_BASE = window.__API_BASE__ || "http://127.0.0.1:8000";
 
-async function apiFetchFile(path, formData) {
+async function apiFetchFile(path, formData, options = {}) {
   const token = localStorage.getItem("fc_token");
+  if (options.count != null) formData.append("count", String(options.count));
+  if (options.difficulty) formData.append("difficulty", options.difficulty);
   return fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -34,7 +39,13 @@ function CardPreview({ cards, onSave, onStudy }) {
           <span style={css.previewCount}>{cards.length}</span>
           <span style={css.previewLabel}>flashcards ready</span>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            style={css.btnGhost}
+            onClick={() => exportFlashcardsJson(cards, "generated-flashcards.json")}
+          >
+            Export JSON
+          </button>
           <button style={css.btnGhost} onClick={onStudy}>
             Study now →
           </button>
@@ -74,7 +85,7 @@ function CardPreview({ cards, onSave, onStudy }) {
 // Text mode
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TextMode({ onGenerated }) {
+function TextMode({ onGenerated, count, difficulty }) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -90,7 +101,7 @@ function TextMode({ onGenerated }) {
     try {
       const res = await apiFetch("/generate", {
         method: "POST",
-        body: JSON.stringify({ text: notes }),
+        body: JSON.stringify({ text: notes, count, difficulty }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Generation failed.");
@@ -170,7 +181,7 @@ function TextMode({ onGenerated }) {
 // Document mode (PDF)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DocumentMode({ onGenerated }) {
+function DocumentMode({ onGenerated, count, difficulty }) {
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -198,7 +209,7 @@ function DocumentMode({ onGenerated }) {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await apiFetchFile("/generate/file", fd);
+      const res = await apiFetchFile("/generate/file", fd, { count, difficulty });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Extraction failed.");
       if (!Array.isArray(data.flashcards) || !data.flashcards.length)
@@ -326,7 +337,7 @@ function DocumentMode({ onGenerated }) {
 // Image mode
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ImageMode({ onGenerated }) {
+function ImageMode({ onGenerated, count, difficulty }) {
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -375,7 +386,7 @@ function ImageMode({ onGenerated }) {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await apiFetchFile("/generate/file", fd);
+      const res = await apiFetchFile("/generate/file", fd, { count, difficulty });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Image extraction failed.");
       if (!Array.isArray(data.flashcards) || !data.flashcards.length)
@@ -600,6 +611,8 @@ const MODES = [
 export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
   const [mode, setMode] = useState("text");
   const [generated, setGenerated] = useState(gen || []);
+  const [count, setCount] = useState(10);
+  const [difficulty, setDifficulty] = useState("medium");
 
   function handleGenerated(cards) {
     setGenerated(cards);
@@ -676,13 +689,43 @@ export default function GenerateTab({ gen, setGen, onSave, onStudy }) {
         {/* ── Mode content ── */}
         <div style={css.panel} key={mode}>
           <div style={{ animation: "fadeUp .25s ease" }}>
-            {mode === "text" && <TextMode onGenerated={handleGenerated} />}
-            {mode === "document" && (
-              <DocumentMode onGenerated={handleGenerated} />
+            <GenerateOptions
+              count={count}
+              difficulty={difficulty}
+              onCountChange={setCount}
+              onDifficultyChange={setDifficulty}
+            />
+            {mode === "text" && (
+              <TextMode
+                onGenerated={handleGenerated}
+                count={count}
+                difficulty={difficulty}
+              />
             )}
-            {mode === "image" && <ImageMode onGenerated={handleGenerated} />}
+            {mode === "document" && (
+              <DocumentMode
+                onGenerated={handleGenerated}
+                count={count}
+                difficulty={difficulty}
+              />
+            )}
+            {mode === "image" && (
+              <ImageMode
+                onGenerated={handleGenerated}
+                count={count}
+                difficulty={difficulty}
+              />
+            )}
           </div>
         </div>
+
+        {generated.length === 0 && (
+          <TabEmpty
+            icon="✨"
+            title="No flashcards yet"
+            message="Paste text, upload a PDF, or add a photo — then generate your deck here."
+          />
+        )}
 
         {/* ── Generated cards ── */}
         {generated.length > 0 && (

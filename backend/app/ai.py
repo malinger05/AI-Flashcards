@@ -39,14 +39,12 @@ ANSWER rules — every answer MUST:
 4. Use plain language — no markdown, no bullet points inside the answer string.
 
 COVERAGE rules:
-- Generate between 8 and 12 flashcards.
-- Cover the most important distinct concepts — do not generate near-duplicate cards.
-- Prefer depth (one clear concept per card) over breadth (vague overview cards).
+{coverage_rules}
 
 Text:
 {text}"""
 
-IMAGE_GENERATION_PROMPT = """You are looking at an image of handwritten or printed study notes.
+IMAGE_GENERATION_PROMPT_BASE = """You are looking at an image of handwritten or printed study notes.
 
 1. First, carefully read ALL text visible in the image.
 2. Then create high-quality flashcards from the content.
@@ -62,7 +60,54 @@ Return ONLY this exact JSON shape (no markdown, no extra keys):
 }}
 
 Apply the same question/answer rules as for text-based generation.
-Generate between 5 and 12 flashcards covering the key concepts visible in the image."""
+{difficulty_line}
+{coverage_rules}"""
+
+
+DIFFICULTY_LINES: dict[str, str] = {
+    "easy": (
+        "DIFFICULTY: EASY — focus on basic definitions, key terms, and simple recall. "
+        "Questions should be straightforward; answers can be brief."
+    ),
+    "medium": (
+        "DIFFICULTY: MEDIUM — typical exam-level depth; balance recall with understanding."
+    ),
+    "hard": (
+        "DIFFICULTY: HARD — require deeper understanding, application, or comparison; "
+        "avoid trivial one-word answers."
+    ),
+}
+
+
+def _normalize_difficulty(difficulty: str) -> str:
+    d = (difficulty or "medium").lower()
+    return d if d in DIFFICULTY_LINES else "medium"
+
+
+def _coverage_rules(count: int) -> str:
+    n = max(5, min(20, int(count)))
+    return (
+        f"- Generate exactly {n} flashcards (match this count when the source has enough material).\n"
+        "- Cover the most important distinct concepts — do not generate near-duplicate cards.\n"
+        "- Prefer depth (one clear concept per card) over breadth (vague overview cards)."
+    )
+
+
+def _build_text_prompt(text: str, count: int = 10, difficulty: str = "medium") -> str:
+    diff = _normalize_difficulty(difficulty)
+    return (
+        GENERATION_PROMPT.replace("{coverage_rules}", _coverage_rules(count))
+        .replace("{text}", text)
+        + f"\n\n{DIFFICULTY_LINES[diff]}"
+    )
+
+
+def _build_image_prompt(count: int = 10, difficulty: str = "medium") -> str:
+    diff = _normalize_difficulty(difficulty)
+    return IMAGE_GENERATION_PROMPT_BASE.format(
+        difficulty_line=DIFFICULTY_LINES[diff],
+        coverage_rules=_coverage_rules(count),
+    )
 
 
 # ── Answer Checking ───────────────────────────────────────────────────────────
@@ -348,8 +393,12 @@ def _extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def generate_flashcards(text: str) -> list[dict[str, str]]:
-    prompt = GENERATION_PROMPT.replace("{text}", text)
+def generate_flashcards(
+    text: str,
+    count: int = 10,
+    difficulty: str = "medium",
+) -> list[dict[str, str]]:
+    prompt = _build_text_prompt(text, count=count, difficulty=difficulty)
     content = _ollama_chat(
         [
             {"role": "system", "content": GENERATION_SYSTEM},
@@ -368,7 +417,12 @@ def generate_flashcards(text: str) -> list[dict[str, str]]:
     return cards
 
 
-def generate_flashcards_from_image(image_bytes: bytes, media_type: str) -> list[dict[str, str]]:
+def generate_flashcards_from_image(
+    image_bytes: bytes,
+    media_type: str,
+    count: int = 10,
+    difficulty: str = "medium",
+) -> list[dict[str, str]]:
     """
     Generate flashcards from an image (JPEG, PNG, WebP, GIF).
     Requires a vision-capable Ollama model (e.g. llava, llava-phi3, moondream).
@@ -378,7 +432,7 @@ def generate_flashcards_from_image(image_bytes: bytes, media_type: str) -> list[
     content = _ollama_vision_chat(
         image_b64=image_b64,
         media_type=media_type,
-        prompt=IMAGE_GENERATION_PROMPT,
+        prompt=_build_image_prompt(count=count, difficulty=difficulty),
         timeout=180,
     )
     parsed = _extract_json(content)
@@ -391,7 +445,11 @@ def generate_flashcards_from_image(image_bytes: bytes, media_type: str) -> list[
     return cards
 
 
-def generate_flashcards_from_pdf(pdf_bytes: bytes) -> list[dict[str, str]]:
+def generate_flashcards_from_pdf(
+    pdf_bytes: bytes,
+    count: int = 10,
+    difficulty: str = "medium",
+) -> list[dict[str, str]]:
     """
     Extract text from a PDF and generate flashcards from it.
     Uses pypdf for text extraction; falls back to an error message for scanned PDFs.
@@ -400,7 +458,7 @@ def generate_flashcards_from_pdf(pdf_bytes: bytes) -> list[dict[str, str]]:
     # Trim to ~8000 chars to stay within context window
     if len(text) > 8000:
         text = text[:8000] + "\n\n[…text truncated for context window…]"
-    return generate_flashcards(text)
+    return generate_flashcards(text, count=count, difficulty=difficulty)
 
 
 def check_answer(question: str, correct_answer: str, user_answer: str) -> dict:

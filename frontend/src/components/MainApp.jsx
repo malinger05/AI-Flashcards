@@ -6,6 +6,8 @@ import QuizTab from "./QuizTab";
 import SavedTab from "./SavedTab";
 import StatsTab from "./StatsTab";
 import StudyGuideTab from "./StudyGuideTab";
+import { TabLoading } from "./TabState";
+import { exportFlashcardsJson } from "../utils/exportFlashcards";
 
 // ── Dark-mode helper ──────────────────────────────────────────────────────────
 function useDarkMode() {
@@ -59,6 +61,7 @@ export default function MainApp({ user, onLogout }) {
   const [ddOpen, setDdOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [loadingCards, setLoadingCards] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [history, setHistory] = useState([]);
   const [sessionCards, setSessionCards] = useState(null);
   const [loadingSessionCards, setLoadingSessionCards] = useState(false);
@@ -105,12 +108,14 @@ export default function MainApp({ user, onLogout }) {
 
   // SCRUM-94: load study history on mount for stats tab and history modal
   useEffect(() => {
+    setLoadingHistory(true);
     apiFetch("/study/history")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setHistory(data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
   }, []);
 
   // Load decks
@@ -449,31 +454,37 @@ export default function MainApp({ user, onLogout }) {
             </button>
           </div>
         )}
-        {tab === "study" && (
-          <StudyTab
-            cards={studyCards}
-            dueOnly={dueStudy}
-            customLabel={
-              dueStudy
-                ? `${dueCards.length} due for review`
-                : customStudy
-                  ? `${customStudy.length} selected cards`
-                  : null
-            }
-            onSessionSaved={(session) => {
-              onSessionSaved(session);
-              refreshSaved();
-            }}
-          />
-        )}
-        {tab === "quiz" && (
-          <QuizTab
-            savedCards={saved}
-            remediationLaunch={remediationQuiz}
-            onRemediationConsumed={() => setRemediationQuiz(null)}
-            onOpenStudyGuide={() => switchTab("guide")}
-          />
-        )}
+        {tab === "study" &&
+          (loadingCards ? (
+            <TabLoading message="Loading your cards…" />
+          ) : (
+            <StudyTab
+              cards={studyCards}
+              dueOnly={dueStudy}
+              customLabel={
+                dueStudy
+                  ? `${dueCards.length} due for review`
+                  : customStudy
+                    ? `${customStudy.length} selected cards`
+                    : null
+              }
+              onSessionSaved={(session) => {
+                onSessionSaved(session);
+                refreshSaved();
+              }}
+            />
+          ))}
+        {tab === "quiz" &&
+          (loadingCards ? (
+            <TabLoading message="Loading your cards…" />
+          ) : (
+            <QuizTab
+              savedCards={saved}
+              remediationLaunch={remediationQuiz}
+              onRemediationConsumed={() => setRemediationQuiz(null)}
+              onOpenStudyGuide={() => switchTab("guide")}
+            />
+          ))}
         {tab === "guide" && (
           <StudyGuideTab
             ollamaDown={ollamaDown}
@@ -482,16 +493,7 @@ export default function MainApp({ user, onLogout }) {
         )}
         {tab === "saved" &&
           (loadingCards ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "4rem",
-                color: "var(--ink3)",
-                fontWeight: 700,
-              }}
-            >
-              Loading cards…
-            </div>
+            <TabLoading message="Loading your cards…" />
           ) : (
             <SavedTab
               cards={saved}
@@ -504,21 +506,17 @@ export default function MainApp({ user, onLogout }) {
               onCreateDeck={handleCreateDeck}
               onAddToDeck={handleAddToDeck}
               onDeleteDeck={handleDeleteDeck}
-              onExport={() => {
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(
-                  new Blob([JSON.stringify(saved, null, 2)], {
-                    type: "application/json",
-                  }),
-                );
-                a.download = "flashcards.json";
-                a.click();
-              }}
+              onExport={(cardsToExport) =>
+                exportFlashcardsJson(cardsToExport, "flashcards.json")
+              }
             />
           ))}
-        {tab === "stats" && (
-          <StatsTab history={history} saved={saved} streak={streak} />
-        )}
+        {tab === "stats" &&
+          (loadingHistory ? (
+            <TabLoading message="Loading your stats…" />
+          ) : (
+            <StatsTab history={history} saved={saved} streak={streak} />
+          ))}
       </main>
 
       {/* PROFILE MODAL */}

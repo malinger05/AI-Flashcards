@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../constants";
+import { TabEmpty } from "./TabState";
 
 export default function QuizTab({
   savedCards,
@@ -177,6 +178,16 @@ export default function QuizTab({
     return "✗ Not quite";
   }
 
+  if (savedCards.length === 0) {
+    return (
+      <TabEmpty
+        icon="📝"
+        title="No cards for quiz"
+        message="Save some flashcards first, then come back to test yourself with AI grading."
+      />
+    );
+  }
+
   // ── Setup ─────────────────────────────────────────────────────────────────
   if (phase === "setup")
     return (
@@ -285,7 +296,7 @@ export default function QuizTab({
             className="btn btn-teal lg"
             style={{ width: "100%" }}
             onClick={startQuiz}
-            disabled={loading || savedCards.length === 0}
+            disabled={loading}
           >
             {loading ? (
               <>
@@ -295,18 +306,6 @@ export default function QuizTab({
               "▶ Start Quiz"
             )}
           </button>
-          {savedCards.length === 0 && (
-            <p
-              style={{
-                fontSize: ".78rem",
-                color: "var(--ink3)",
-                marginTop: ".75rem",
-                fontWeight: 600,
-              }}
-            >
-              Save some flashcards first to use Quiz mode.
-            </p>
-          )}
         </div>
       </div>
     );

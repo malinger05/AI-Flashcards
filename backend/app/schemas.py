@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -36,7 +36,10 @@ class ChangePasswordRequest(BaseModel):
 # ── Flashcards ────────────────────────────────────────────────────────────────
 
 class GenerateRequest(BaseModel):
-    text: str = Field(..., min_length=5)
+    """SCRUM-76: optional card count and difficulty for AI generation."""
+    text:       str = Field(..., min_length=5)
+    count:      int = Field(default=10, ge=5, le=20)
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
 
 class FlashcardBase(BaseModel):
     question: str = Field(..., min_length=1)

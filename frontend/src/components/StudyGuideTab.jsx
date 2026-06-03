@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../constants";
+import { TabEmpty, TabLoading } from "./TabState";
 
 export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
   const [weakCards, setWeakCards] = useState([]);
@@ -65,11 +66,13 @@ export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
       )}
 
       {loadingWeak ? (
-        <p style={{ color: "var(--ink3)", fontWeight: 700 }}>Loading weak areas…</p>
+        <TabLoading message="Loading weak areas…" />
       ) : weakCards.length === 0 ? (
-        <div className="empty-card">
-          <p>No weak cards yet. Take a quiz and try again — we'll highlight what to review.</p>
-        </div>
+        <TabEmpty
+          icon="📖"
+          title="No weak areas yet"
+          message="Take a quiz and miss some answers — we'll highlight what to review and generate AI tips."
+        />
       ) : (
         <>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
