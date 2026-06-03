@@ -233,6 +233,7 @@ def _ollama_chat(
 ) -> str:
     """Send a chat request to Ollama and return the assistant message content."""
     ollama_base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    # SCRUM-92: default quiz/generation model — override with OLLAMA_MODEL (e.g. llama3.2)
     ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
 
     payload: dict = {

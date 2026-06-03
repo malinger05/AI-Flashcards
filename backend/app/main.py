@@ -631,7 +631,7 @@ def quiz_answer(
     if not card:
         raise HTTPException(status_code=404, detail="Flashcard not found.")
 
-    # S3-005: use quiz_grader (logs grader=ai|fuzzy_fallback, duration_ms, correct)
+    # SCRUM-92 / S3-005: llama3.2 semantic grading via quiz_grader (fuzzy_fallback if Ollama down)
     result    = grade_answer(card.question, card.answer, payload.user_answer)
     verdict   = result["verdict"]
     reason    = result["reason"]

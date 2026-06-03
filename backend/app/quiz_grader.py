@@ -1,6 +1,6 @@
 """
-quiz_grader.py — S3-005
-Extracted quiz answer-grading module.
+quiz_grader.py — S3-005 / SCRUM-92
+Extracted quiz answer-grading module — llama3.2 JSON verdict via Ollama, with fuzzy fallback.
 Logs grader=ai or grader=fuzzy_fallback, duration_ms, and correct per answer.
 Never logs the full student answer at INFO level.
 """
