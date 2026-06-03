@@ -45,6 +45,7 @@ from .models import (
     StudySession, StudySessionResult,
 )
 from .quiz_grader import grade_answer
+from .spaced_repetition import compute_next_review, is_card_due
 from .schemas import (
     AnswerRequest, AnswerResult, AuthResponse,
     ChangePasswordRequest,
@@ -444,14 +445,19 @@ def save_flashcards(
 @app.get("/flashcards", response_model=list[FlashcardOut])
 def get_flashcards(
     deck: str | None = Query(default=None, description="Filter by deck name"),
+    due_only: bool = Query(default=False, description="SCRUM-80: return only due cards"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """BL-002: optional ?deck= filter; no param returns all cards."""
+    """BL-002: optional ?deck= filter; ?due_only=true returns cards ready for review."""
     q = db.query(Flashcard).filter(Flashcard.user_id == current_user.id)
     if deck is not None:
         q = q.filter(Flashcard.deck == deck)
-    return q.order_by(Flashcard.created_at.desc()).all()
+    cards = q.order_by(Flashcard.created_at.desc()).all()
+    if due_only:
+        # SCRUM-78/80: spaced repetition queue — next_review_at null or in the past
+        cards = [c for c in cards if is_card_due(c.next_review_at)]
+    return cards
 
 
 @app.patch("/flashcards/{flashcard_id}", response_model=FlashcardOut)
@@ -748,15 +754,30 @@ def save_study_session(
         flashcard_ids=ids_str,
     )
     db.add(session); db.commit(); db.refresh(session)
+    now = datetime.now(timezone.utc)
     for r in payload.results:
         fid = r.get("flashcard_id") or r.get("id")
         if fid is None:
             continue
+        knew_it = bool(r.get("correct"))
         db.add(StudySessionResult(
             study_session_id=session.id,
             flashcard_id=fid,
-            correct=1 if r.get("correct") else 0,
+            correct=1 if knew_it else 0,
         ))
+        # SCRUM-78: reschedule each studied card based on swipe outcome
+        card = db.query(Flashcard).filter(
+            Flashcard.id == fid,
+            Flashcard.user_id == current_user.id,
+        ).first()
+        if card:
+            nxt, step = compute_next_review(
+                knew_it=knew_it,
+                review_step=card.review_step or 0,
+                now=now,
+            )
+            card.next_review_at = nxt
+            card.review_step = step
     db.commit()
     return session
 

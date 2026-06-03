@@ -53,11 +53,13 @@ class FlashcardUpdate(BaseModel):
     deck:     Optional[str] = Field(None, min_length=1, max_length=80)
 
 class FlashcardOut(FlashcardBase):
-    id:            int
-    deck:          str
-    correct_count: int
-    wrong_count:   int
-    created_at:    datetime
+    id:             int
+    deck:           str
+    correct_count:  int
+    wrong_count:    int
+    next_review_at: Optional[datetime] = None
+    review_step:    int = 0
+    created_at:     datetime
 
     class Config:
         from_attributes = True
