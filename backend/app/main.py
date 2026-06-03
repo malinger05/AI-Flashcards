@@ -582,6 +582,22 @@ def delete_deck(
 
 # ── Quiz ──────────────────────────────────────────────────────────────────────
 
+def _begin_quiz_session(db: Session, user_id: int, cards: list[Flashcard]) -> QuizCardOut:
+    """Create a QuizSession and return the first card."""
+    ids_str = ",".join(str(c.id) for c in cards)
+    session = QuizSession(flashcard_ids=ids_str, user_id=user_id)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return QuizCardOut(
+        session_id=session.id,
+        card_index=0,
+        total_cards=len(cards),
+        flashcard_id=cards[0].id,
+        question=cards[0].question,
+    )
+
+
 @app.post("/quiz/start", response_model=QuizCardOut)
 def quiz_start(
     payload: QuizStartRequest,
@@ -611,13 +627,7 @@ def quiz_start(
     if not cards:
         raise HTTPException(status_code=404, detail="No matching flashcards found.")
     random.shuffle(cards)
-    ids_str = ",".join(str(c.id) for c in cards)
-    session = QuizSession(flashcard_ids=ids_str, user_id=current_user.id)
-    db.add(session); db.commit(); db.refresh(session)
-    return QuizCardOut(
-        session_id=session.id, card_index=0,
-        total_cards=len(cards), flashcard_id=cards[0].id, question=cards[0].question,
-    )
+    return _begin_quiz_session(db, current_user.id, cards)
 
 
 @app.post("/quiz/answer", response_model=AnswerResult)
@@ -816,22 +826,12 @@ def quiz_start_remediation(
     )
     id_order = [w["flashcard_id"] for w in weak]
     cards.sort(key=lambda c: id_order.index(c.id))
-    ids_str = ",".join(str(c.id) for c in cards)
-    session = QuizSession(flashcard_ids=ids_str, user_id=current_user.id)
-    db.add(session)
-    db.commit()
-    db.refresh(session)
+    out = _begin_quiz_session(db, current_user.id, cards)
     logger.info(
         "remediation_quiz_start user_id=%d card_count=%d session_id=%d",
-        current_user.id, len(cards), session.id,
+        current_user.id, len(cards), out.session_id,
     )
-    return QuizCardOut(
-        session_id=session.id,
-        card_index=0,
-        total_cards=len(cards),
-        flashcard_id=cards[0].id,
-        question=cards[0].question,
-    )
+    return out
 
 
 # ── Study History ─────────────────────────────────────────────────────────────
