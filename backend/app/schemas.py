@@ -28,7 +28,7 @@ class AuthResponse(BaseModel):
     user:  UserOut
 
 class ChangePasswordRequest(BaseModel):
-    """BL-008: Change password for the authenticated user."""
+    """BL-008 / SCRUM-93: Change password for the authenticated user (Bearer token required)."""
     current_password: str = Field(..., min_length=1)
     new_password:     str = Field(..., min_length=6)
 
