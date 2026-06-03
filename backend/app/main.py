@@ -41,7 +41,7 @@ from .db import Base, engine, get_db, run_migrations
 from .logging_config import setup_logging
 from .models import (
     Deck, DeckCard,
-    Flashcard, QuizSession, User, UserSession,
+    Flashcard, QuizAttempt, QuizSession, User, UserSession,
     StudySession, StudySessionResult,
 )
 from .quiz_grader import grade_answer
@@ -650,6 +650,17 @@ def quiz_answer(
     else:
         card.wrong_count += 1
         session.wrong_count += 1
+
+    # SCRUM-102: persist attempt for study guide / weak-card analysis
+    db.add(QuizAttempt(
+        user_id=current_user.id,
+        session_id=session.id,
+        flashcard_id=card.id,
+        verdict=verdict,
+        user_answer=payload.user_answer[:500],
+        grader_reason=(reason or "")[:1000],
+        grader=result.get("grader", "ai"),
+    ))
 
     session.current_index = idx + 1
     db.commit()

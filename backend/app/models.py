@@ -49,6 +49,20 @@ class QuizSession(Base):
     created_at    = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class QuizAttempt(Base):
+    """SCRUM-102: per-answer quiz history for study guide / weak-card ranking."""
+    __tablename__ = "quiz_attempts"
+    id             = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    session_id     = Column(Integer, ForeignKey("quiz_sessions.id"), nullable=False, index=True)
+    flashcard_id   = Column(Integer, ForeignKey("flashcards.id"), nullable=False, index=True)
+    verdict        = Column(String, nullable=False)   # correct | partial | wrong
+    user_answer    = Column(String, nullable=False)   # truncated at write time
+    grader_reason  = Column(String, nullable=False, default="")
+    grader         = Column(String, nullable=False, default="ai")  # ai | fuzzy_fallback
+    created_at     = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class StudySession(Base):
     __tablename__ = "study_sessions"
     id            = Column(Integer, primary_key=True, index=True)

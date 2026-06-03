@@ -75,4 +75,23 @@ def run_migrations():
             if "user_id" not in qs_cols:
                 conn.execute(text("ALTER TABLE quiz_sessions ADD COLUMN user_id INTEGER REFERENCES users(id)"))
 
+        # ── quiz_attempts (SCRUM-102) ─────────────────────────────────────────
+        qa_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='quiz_attempts'")
+        ).fetchone()
+        if not qa_exists:
+            conn.execute(text("""
+                CREATE TABLE quiz_attempts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    session_id INTEGER NOT NULL REFERENCES quiz_sessions(id),
+                    flashcard_id INTEGER NOT NULL REFERENCES flashcards(id),
+                    verdict TEXT NOT NULL,
+                    user_answer TEXT NOT NULL,
+                    grader_reason TEXT NOT NULL DEFAULT '',
+                    grader TEXT NOT NULL DEFAULT 'ai',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+                )
+            """))
+
         conn.commit()
