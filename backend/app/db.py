@@ -1,7 +1,9 @@
+import os
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./flashcards.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./flashcards.db")
 
 engine = create_engine(
     DATABASE_URL,
@@ -38,6 +40,13 @@ def run_migrations():
         # BL-001: deck column — default "General" for all existing cards
         if "deck" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN deck TEXT NOT NULL DEFAULT 'General'"))
+        # SCRUM-78: spaced repetition — when the card is next due for study
+        if "next_review_at" not in fc_cols:
+            conn.execute(text("ALTER TABLE flashcards ADD COLUMN next_review_at DATETIME"))
+        if "review_step" not in fc_cols:
+            conn.execute(text(
+                "ALTER TABLE flashcards ADD COLUMN review_step INTEGER NOT NULL DEFAULT 0"
+            ))
 
         # ── user_sessions ─────────────────────────────────────────────────────
         us_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(user_sessions)")).fetchall()}

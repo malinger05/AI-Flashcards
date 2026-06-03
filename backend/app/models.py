@@ -32,6 +32,9 @@ class Flashcard(Base):
     deck          = Column(String, nullable=False, default="General", server_default="General")
     correct_count = Column(Integer, default=0, nullable=False)
     wrong_count   = Column(Integer, default=0, nullable=False)
+    # SCRUM-78: null next_review_at means the card is due; updated after each study swipe.
+    next_review_at = Column(DateTime(timezone=True), nullable=True)
+    review_step    = Column(Integer, default=0, nullable=False)
     created_at    = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
