@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import Doodle from "./Doodle";
 import { apiFetch } from "../constants";
 import GenerateOptions from "./GenerateOptions";
+import { getApiErrorMessage, getNetworkOrErrorMessage } from "../utils/apiErrors";
+import { parseFlashcardsJsonFile } from "../utils/importFlashcardsFromJson";
 
 // ── Edit Card Modal ───────────────────────────────────────────────────────────
 function EditCardModal({ card, onSave, onClose }) {
@@ -646,12 +648,12 @@ function ImportPanel({ onGenerated }) {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Import failed.");
+      if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       if (!Array.isArray(data.flashcards) || !data.flashcards.length)
         throw new Error("No flashcards extracted. Try a clearer image or PDF.");
       onGenerated(data.flashcards);
     } catch (e) {
-      setErr(e.message);
+      setErr(getNetworkOrErrorMessage(e));
     } finally {
       setLoading(false);
       e.target.value = "";
@@ -703,6 +705,68 @@ function ImportPanel({ onGenerated }) {
   );
 }
 
+// SCRUM-75: import flashcards from a JSON file (export format or { question, answer }[])
+function JsonImportPanel({ onGenerated }) {
+  const fileRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setErr("");
+    try {
+      const cards = await parseFlashcardsJsonFile(file);
+      onGenerated(cards);
+    } catch (ex) {
+      setErr(getNetworkOrErrorMessage(ex));
+    } finally {
+      setLoading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div className="import-panel" style={{ marginTop: ".75rem" }}>
+      <div className="import-inner">
+        <span className="import-icon">📋</span>
+        <div>
+          <p className="import-title">Import from JSON file</p>
+          <p className="import-sub">
+            Use a file exported from this app or an array of question/answer
+            pairs
+          </p>
+        </div>
+        <label
+          className={`btn btn-ghost import-btn${loading ? " disabled" : ""}`}
+        >
+          {loading ? (
+            <>
+              <span className="spin" /> Reading…
+            </>
+          ) : (
+            "Choose JSON"
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={handleFile}
+            disabled={loading}
+          />
+        </label>
+      </div>
+      {err && (
+        <p className="msg-err" style={{ marginTop: ".5rem" }}>
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SavedTab({
   cards,
@@ -714,6 +778,7 @@ export default function SavedTab({
   onCreateDeck,
   onAddToDeck,
   onDeleteDeck,
+  onImportSaved,
 }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(new Set());
@@ -724,6 +789,7 @@ export default function SavedTab({
   const [showImport, setShowImport] = useState(false);
   const [importedCards, setImportedCards] = useState([]);
   const [savingImport, setSavingImport] = useState(false);
+  const [importErr, setImportErr] = useState("");
 
   // Filter by deck and search
   const filtered = useMemo(() => {
@@ -788,25 +854,27 @@ export default function SavedTab({
   async function saveImportedCards() {
     if (!importedCards.length) return;
     setSavingImport(true);
+    setImportErr("");
     try {
-      const res = await apiFetch("/flashcards", {
-        method: "POST",
-        body: JSON.stringify(
-          importedCards.map((c) => ({
-            question: c.question,
-            answer: c.answer,
-          })),
-        ),
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        // Notify parent through a window event (MainApp handles the actual state)
-        window.dispatchEvent(
-          new CustomEvent("fc-cards-saved", { detail: data }),
-        );
+      if (onImportSaved) {
+        await onImportSaved(importedCards);
+      } else {
+        const res = await apiFetch("/flashcards", {
+          method: "POST",
+          body: JSON.stringify(
+            importedCards.map((c) => ({
+              question: c.question,
+              answer: c.answer,
+            })),
+          ),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       }
       setImportedCards([]);
       setShowImport(false);
+    } catch (e) {
+      setImportErr(getNetworkOrErrorMessage(e));
     } finally {
       setSavingImport(false);
     }
@@ -883,9 +951,21 @@ export default function SavedTab({
               <div style={{ marginBottom: "1rem" }}>
                 <ImportPanel
                   onGenerated={(cards) => {
+                    setImportErr("");
                     setImportedCards(cards);
                   }}
                 />
+                <JsonImportPanel
+                  onGenerated={(cards) => {
+                    setImportErr("");
+                    setImportedCards(cards);
+                  }}
+                />
+                {importErr && (
+                  <p className="msg-err" style={{ marginTop: ".5rem" }}>
+                    {importErr}
+                  </p>
+                )}
                 {importedCards.length > 0 && (
                   <div className="import-preview">
                     <p className="import-preview-title">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../constants";
+import { getApiErrorMessage, getNetworkOrErrorMessage } from "../utils/apiErrors";
 import { TabEmpty, TabLoading } from "./TabState";
 
 export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
@@ -17,7 +18,7 @@ export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
       .then((data) => {
         if (Array.isArray(data)) setWeakCards(data);
       })
-      .catch(() => setErr("Could not load weak areas."))
+      .catch((e) => setErr(getNetworkOrErrorMessage(e)))
       .finally(() => setLoadingWeak(false));
   }, []);
 
@@ -39,10 +40,10 @@ export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
         body: JSON.stringify({ limit: Math.min(5, weakCards.length) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Study guide failed.");
+      if (!res.ok) throw new Error(getApiErrorMessage(res, data));
       setGuide(data);
     } catch (e) {
-      setErr(e.message);
+      setErr(getNetworkOrErrorMessage(e));
     } finally {
       setLoadingGuide(false);
     }
