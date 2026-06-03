@@ -166,6 +166,14 @@ const CSS = `
 .ollama-banner { background: var(--surface-warn); }
 .sess-result.ok { background: var(--surface-ok); }
 .sess-result.bad { background: var(--surface-err); }
+
+/* Profile — change password (SCRUM-93) */
+.profile-pw { width:100%; margin-top:1.25rem; padding-top:1.25rem; border-top:2px solid var(--border, var(--teal-l)); text-align:left; }
+.profile-pw-title { font-size:.95rem; font-weight:900; color:var(--teal-dd); margin:0 0 .85rem; }
+.profile-pw-fields { display:flex; flex-direction:column; gap:.65rem; margin-bottom:.85rem; }
+.profile-pw-label { display:flex; flex-direction:column; gap:.35rem; font-size:.72rem; font-weight:800; color:var(--ink3); text-transform:uppercase; letter-spacing:.06em; }
+.profile-pw .field-wrap { border-radius:var(--r2); }
+.profile-pw .btn { width:100%; justify-content:center; }
 [data-theme="dark"] .sess-result.ok { background: var(--surface-ok) !important; border-left-color: #22c55e !important; }
 [data-theme="dark"] .sess-result.bad { background: var(--surface-err) !important; border-left-color: #ef4444 !important; }
 [data-theme="dark"] .gen-surface    { background: var(--bg2) !important; border-color: var(--border) !important; color: var(--ink) !important; }

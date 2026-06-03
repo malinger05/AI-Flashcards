@@ -7,6 +7,7 @@ import SavedTab from "./SavedTab";
 import StatsTab from "./StatsTab";
 import StudyGuideTab from "./StudyGuideTab";
 import StatsStrip from "./StatsStrip";
+import ProfileChangePassword from "./ProfileChangePassword";
 import TabErrorBanner from "./TabErrorBanner";
 import { TabLoading } from "./TabState";
 import { exportFlashcardsJson } from "../utils/exportFlashcards";
@@ -594,7 +595,7 @@ export default function MainApp({ user, onLogout }) {
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div
             className="modal"
-            style={{ maxWidth: 400 }}
+            style={{ maxWidth: 440 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-head">
@@ -659,6 +660,7 @@ export default function MainApp({ user, onLogout }) {
                     <span className="rlbl">Streak</span>
                   </div>
                 </div>
+                <ProfileChangePassword />
               </div>
             </div>
           </div>
