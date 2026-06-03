@@ -27,6 +27,11 @@ class AuthResponse(BaseModel):
     token: str
     user:  UserOut
 
+class ChangePasswordRequest(BaseModel):
+    """BL-008: Change password for the authenticated user."""
+    current_password: str = Field(..., min_length=1)
+    new_password:     str = Field(..., min_length=6)
+
 
 # ── Flashcards ────────────────────────────────────────────────────────────────
 
@@ -38,15 +43,18 @@ class FlashcardBase(BaseModel):
     answer:   str = Field(..., min_length=1)
 
 class FlashcardCreate(FlashcardBase):
-    pass
+    # BL-001: optional deck on create; defaults to "General" on the model
+    deck: str = Field(default="General", min_length=1, max_length=80)
 
 class FlashcardUpdate(BaseModel):
-    """Partial update — both fields optional so callers can patch just one."""
+    """Partial update — all fields optional so callers can patch just one."""
     question: Optional[str] = Field(None, min_length=1)
     answer:   Optional[str] = Field(None, min_length=1)
+    deck:     Optional[str] = Field(None, min_length=1, max_length=80)
 
 class FlashcardOut(FlashcardBase):
     id:            int
+    deck:          str
     correct_count: int
     wrong_count:   int
     created_at:    datetime
@@ -90,6 +98,18 @@ class QuizSummary(BaseModel):
     correct_count: int
     wrong_count:   int
     score_pct:     int
+
+class QuizHistoryOut(BaseModel):
+    """BL-004: Quiz history entry — last 50 sessions, newest first."""
+    id:         int
+    created_at: datetime
+    total:      int
+    correct:    int
+    wrong:      int
+    score_pct:  int
+
+    class Config:
+        from_attributes = True
 
 
 # ── Study History ─────────────────────────────────────────────────────────────

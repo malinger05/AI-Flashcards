@@ -18,34 +18,48 @@ def get_db():
     finally:
         db.close()
 
-# SCRUM-49: Migration — add per-card correct/wrong counters (used for difficulty prioritization).
+
 def run_migrations():
-    """Safely add any new columns to existing tables without data loss."""
+    """
+    Safe, additive migrations — never drops data.
+    Each ALTER TABLE is guarded by a column-existence check.
+    """
     with engine.connect() as conn:
-        # flashcards table
+
+        # ── flashcards ────────────────────────────────────────────────────────
         fc_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(flashcards)")).fetchall()}
+
         if "correct_count" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN correct_count INTEGER NOT NULL DEFAULT 0"))
         if "wrong_count" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN wrong_count INTEGER NOT NULL DEFAULT 0"))
-        # Keep legacy DBs compatible by adding user_id lazily when absent.
         if "user_id" not in fc_cols:
             conn.execute(text("ALTER TABLE flashcards ADD COLUMN user_id INTEGER REFERENCES users(id)"))
-        
-        # user_sessions table
-        us_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(user_sessions)")).fetchall()}
-        if "last_used_at" not in us_cols:
-            conn.execute(text("ALTER TABLE user_sessions ADD COLUMN last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP"))
+        # BL-001: deck column — default "General" for all existing cards
+        if "deck" not in fc_cols:
+            conn.execute(text("ALTER TABLE flashcards ADD COLUMN deck TEXT NOT NULL DEFAULT 'General'"))
 
-        # study_sessions table
-        ss_exists = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='study_sessions'")).fetchone()
+        # ── user_sessions ─────────────────────────────────────────────────────
+        us_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(user_sessions)")).fetchall()}
+
+        if "last_used_at" not in us_cols:
+            conn.execute(text(
+                "ALTER TABLE user_sessions ADD COLUMN last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP"
+            ))
+
+        # ── study_sessions ────────────────────────────────────────────────────
+        ss_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='study_sessions'")
+        ).fetchone()
         if ss_exists:
             ss_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(study_sessions)")).fetchall()}
             if "flashcard_ids" not in ss_cols:
                 conn.execute(text("ALTER TABLE study_sessions ADD COLUMN flashcard_ids TEXT NOT NULL DEFAULT ''"))
 
-        # quiz_sessions table (may not exist yet - that's fine, create_all handles it)
-        qs_exists = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='quiz_sessions'")).fetchone()
+        # ── quiz_sessions ─────────────────────────────────────────────────────
+        qs_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='quiz_sessions'")
+        ).fetchone()
         if qs_exists:
             qs_cols = {r[1] for r in conn.execute(text("PRAGMA table_info(quiz_sessions)")).fetchall()}
             if "user_id" not in qs_cols:

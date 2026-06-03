@@ -62,6 +62,21 @@ export default function MainApp({ user, onLogout }) {
   const [decks, setDecks] = useState([]);
   const [dark, setDark] = useDarkMode();
   const ddRef = useRef(null);
+  // S3-007: Ollama health banner state
+  const [ollamaDown, setOllamaDown] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => sessionStorage.getItem("ollama_banner_dismissed") === "1",
+  );
+
+  // S3-007: health check on mount
+  useEffect(() => {
+    fetch("/health")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ollama === "unreachable") setOllamaDown(true);
+      })
+      .catch(() => {});
+  }, []);
 
   // Load flashcards
   useEffect(() => {
@@ -149,6 +164,15 @@ export default function MainApp({ user, onLogout }) {
   function switchTab(t) {
     if (t !== "study") setCustomStudy(null);
     setTab(t);
+    // S3-007: re-check health when user opens Generate tab
+    if (t === "generate") {
+      fetch("/health")
+        .then((r) => r.json())
+        .then((data) => {
+          setOllamaDown(data.ollama === "unreachable");
+        })
+        .catch(() => {});
+    }
   }
 
   async function handleEditCard(id, question, answer) {
@@ -301,6 +325,52 @@ export default function MainApp({ user, onLogout }) {
       </header>
 
       <main className="content">
+        {/* S3-007: Ollama offline warning banner */}
+        {ollamaDown && !bannerDismissed && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+              padding: "10px 18px",
+              background: "#fffbeb",
+              borderBottom: "2px solid #f59e0b",
+              fontSize: ".85rem",
+              fontWeight: 700,
+              color: "#92400e",
+            }}
+          >
+            <span>
+              ⚠️ <strong>Ollama is offline</strong> — Generate and Quiz features
+              may not work. Make sure Ollama is running (
+              <code style={{ fontFamily: "monospace", fontSize: ".8em" }}>
+                ollama serve
+              </code>
+              ).
+            </span>
+            <button
+              onClick={() => {
+                setBannerDismissed(true);
+                sessionStorage.setItem("ollama_banner_dismissed", "1");
+              }}
+              style={{
+                background: "none",
+                border: "1.5px solid #f59e0b",
+                borderRadius: 8,
+                padding: "3px 12px",
+                cursor: "pointer",
+                fontWeight: 800,
+                color: "#92400e",
+                fontSize: ".82rem",
+                fontFamily: "inherit",
+              }}
+            >
+              Dismiss ✕
+            </button>
+          </div>
+        )}
         {tab === "generate" && (
           <GenerateTab
             gen={gen}

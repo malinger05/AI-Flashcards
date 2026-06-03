@@ -13,10 +13,12 @@ class User(Base):
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
-    id         = Column(Integer, primary_key=True, index=True)
-    token      = Column(String, unique=True, nullable=False, index=True)
-    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    id           = Column(Integer, primary_key=True, index=True)
+    token        = Column(String, unique=True, nullable=False, index=True)
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at   = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # BL-006: updated on every authenticated request; used for session expiry.
+    last_used_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
 
 
 class Flashcard(Base):
@@ -25,6 +27,8 @@ class Flashcard(Base):
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     question      = Column(String, nullable=False)
     answer        = Column(String, nullable=False)
+    # BL-001: deck column — default "General"; migration in run_migrations().
+    deck          = Column(String, nullable=False, default="General", server_default="General")
     correct_count = Column(Integer, default=0, nullable=False)
     wrong_count   = Column(Integer, default=0, nullable=False)
     created_at    = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -82,57 +82,83 @@ Student answer: {user_answer}
 
 ━━━ WHAT TO CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-A) FACTS — Does the student's answer assert the same key facts as the correct answer?
-   - Synonyms and paraphrases are fine ("expansion" = "Lebensraum concept", "parliament" = "legislature").
-   - Different word order, grammar, typos → ignore.
-   - BUT: wrong facts, wrong direction, wrong entity, wrong era → penalise.
+STEP 1 — Identify the CORE FACTS of the correct answer.
+  Ask: what are the 1-2 facts a student absolutely must know to answer this question?
+  Everything else (examples, extra context, implementation details) is supporting detail.
 
-B) COMPLETENESS — Does the student cover the essential substance?
-   - A correct answer can be shorter than the model answer as long as the key claim is there.
-   - Missing a minor qualifier ("in Eastern Europe" when the core "Lebensraum / living space" IS present) → still CORRECT.
-   - But a vague answer that could describe many things ("it was a law that changed things") → WRONG, not PARTIAL.
-   - Vagueness test: could this answer describe a dozen different things? If yes → WRONG.
+STEP 2 — Check whether the student stated those core facts.
+  - Synonyms, paraphrases, typos, grammar errors, informal phrasing → ignore completely.
+  - SHORT does NOT mean PARTIAL. A brief answer that contains the core facts is CORRECT.
+  - An answer is only PARTIAL if a CORE FACT is genuinely missing or wrong — not because
+    supporting details, examples, or extra context are omitted.
+  - An answer is WRONG if it is factually incorrect, completely off-topic, or so vague it
+    could describe dozens of different things.
+
+━━━ THE SHORT-ANSWER RULE (critical) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Students often write correct answers in very few words. Before marking PARTIAL, ask:
+  "Does the student's answer, even if short, contain the core facts?"
+  If YES → CORRECT, regardless of what extra details the model answer includes.
+  If NO  → check whether a core fact is missing (PARTIAL) or nothing correct is stated (WRONG).
 
 ━━━ THREE VERDICTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CORRECT — The student's answer captures the same factual substance as the correct answer,
-  even if phrased differently or slightly shorter.
+CORRECT — Student states the core facts, even briefly, even with different words or typos.
 
-PARTIAL — The student is clearly on the right topic and has some correct facts,
-  BUT is missing a significant factual element that changes or substantially
-  reduces the meaning, OR contains a notable factual error alongside correct parts.
-  Use PARTIAL sparingly — only when the answer is genuinely half-right, not just brief.
+PARTIAL — Student is on the right topic and has SOME core facts but is genuinely missing
+  ONE core fact, or has a notable factual error alongside correct parts.
+  Do NOT use PARTIAL just because the answer is short or omits supporting details.
 
-WRONG  — The student's answer is factually incorrect, too vague to demonstrate knowledge,
-  completely off-topic, or essentially empty of real information.
+WRONG   — Core facts are absent, contradicted, or the answer is too vague to show knowledge
+  of the specific topic (could describe many different things).
 
 ━━━ CALIBRATION EXAMPLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+Q: What were the Nuremberg Laws?
+Correct: Laws that took away the human rights of Jewish people in Germany, forcing them to wear the Star of David on their clothing.
+Core facts: (1) laws/rules, (2) targeted Jewish people, (3) removed their rights.
+Star of David = supporting detail, not a core fact.
+
+"It a document that take away jewish rights"          → CORRECT  (core facts 1+2+3 all present; typos ignored)
+"Laws that stripped Jewish people of their rights"    → CORRECT  (same substance, cleaner phrasing)
+"Laws targeting Jewish people in Germany"             → CORRECT  (identifies group + legal mechanism)
+"Anti-Jewish laws in Nazi Germany"                    → CORRECT  (brief but specific — group + legal nature)
+"Laws about Jewish people wearing the Star of David"  → PARTIAL  (mentions Jews + a detail, but misses rights removal — a core fact)
+"Nazi laws about clothing badges"                     → PARTIAL  (too narrow — misses rights-removal core)
+"German laws during World War 2"                      → WRONG    (too vague — describes hundreds of possible laws)
+"A peace treaty"                                      → WRONG    (factually wrong)
+
 Q: What was the Enabling Act of 1933?
 Correct: A law that gave Hitler dictatorial powers and effectively ended the Weimar Republic's democratic system.
-"A law that gave Hitler total power over Germany"                      → CORRECT  (same substance, different words)
-"It allowed Hitler to pass laws without the Reichstag"                → CORRECT  (correctly describes the mechanism)
-"A law that transformed Weimar Germany into Nazi Germany"             → PARTIAL  (right context, but no mention of HOW — dictatorial powers)
-"A law about enabling the Nazi party"                                 → WRONG    (too vague, no specific claim)
-"It was a peace treaty signed after WWI"                              → WRONG    (factually wrong)
+Core facts: (1) a law, (2) gave Hitler dictatorial/total power.
+
+"A law that gave Hitler total power over Germany"     → CORRECT  (core facts 1+2 present)
+"It allowed Hitler to pass laws without parliament"   → CORRECT  (describes the mechanism of total power)
+"A law that transformed Weimar Germany into Nazism"   → PARTIAL  (right context but does not name HOW — Hitler's dictatorial power)
+"A law about enabling the Nazi party"                 → WRONG    (too vague, no specific claim about what it enabled)
+"A peace treaty signed after WWI"                     → WRONG    (factually wrong)
 
 Q: What is osmosis?
 Correct: Movement of water molecules from low to high solute concentration through a semi-permeable membrane.
-"Water moving from dilute to concentrated solution across a membrane" → CORRECT  (same meaning, shorter)
-"Water moving through a membrane"                                     → WRONG    (no direction — too vague, defines many things)
-"Movement of particles from high to low concentration"                → PARTIAL  (direction inverted AND particles ≠ water only)
+Core facts: (1) water movement, (2) concentration gradient direction (low to high solute).
+
+"Water moving from dilute to concentrated solution across a membrane" → CORRECT  (core facts 1+2 present)
+"Water moving through a membrane"                                     → WRONG    (no direction — too vague)
+"Movement of particles from high to low concentration"                → PARTIAL  (direction inverted AND particles not water only)
 
 Q: What was Hitler's goal for Germany?
 Correct: Lebensraum — living space for the German people in Eastern Europe.
-"To expand German territory into Eastern Europe"                      → CORRECT  (captures Lebensraum concept and direction)
-"To expand Germany's territory"                                       → PARTIAL  (right idea but missing the Eastern Europe direction, which is the key specific claim)
-"To make Germany great again"                                         → WRONG    (too vague, no factual content)
+Core facts: (1) territorial expansion, (2) eastward / Eastern Europe direction.
+
+"To expand German territory into Eastern Europe"      → CORRECT  (core facts 1+2 present)
+"To expand Germany's territory"                       → PARTIAL  (core fact 1 present; Eastern Europe direction is a core fact here, not a detail)
+"To make Germany great again"                         → WRONG    (too vague, no factual content)
 
 ━━━ REASON FIELD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For PARTIAL: name exactly what factual piece is missing or wrong.
+For PARTIAL: name the specific CORE FACT that is missing or wrong (not a supporting detail).
 For WRONG: state briefly why it fails (too vague / factually wrong / off-topic).
-For CORRECT: keep reason empty ("").
+For CORRECT: return an empty string "".
 
 Return ONLY this JSON:
 {{
