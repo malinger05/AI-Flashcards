@@ -86,6 +86,8 @@ def _check_rate_limit(user_id: int) -> None:
 
 
 # ── Session expiry ────────────────────────────────────────────────────────────
+# SCRUM-91: idle timeout — compare last_used_at against this window (days).
+# Set SESSION_MAX_AGE_DAYS=0 to disable expiry (useful for local dev).
 SESSION_MAX_AGE_DAYS = int(os.getenv("SESSION_MAX_AGE_DAYS", "30"))
 
 
@@ -184,7 +186,7 @@ def get_current_user(
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
-    # BL-006: enforce session max age
+    # SCRUM-91 / BL-006: enforce session max age from last_used_at
     if SESSION_MAX_AGE_DAYS > 0 and session.last_used_at:
         cutoff = datetime.now(timezone.utc) - timedelta(days=SESSION_MAX_AGE_DAYS)
         last = session.last_used_at
@@ -195,7 +197,7 @@ def get_current_user(
             db.commit()
             raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
 
-    # BL-006: update last_used_at on every authenticated request
+    # SCRUM-91: slide the session window forward on every authenticated request
     session.last_used_at = datetime.now(timezone.utc)
     db.commit()
 
