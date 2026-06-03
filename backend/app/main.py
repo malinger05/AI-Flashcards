@@ -303,7 +303,10 @@ def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """BL-008: Change password for the currently authenticated user."""
+    """
+    BL-008 / SCRUM-93: Change password for the logged-in user.
+    Verifies current_password, enforces min length on new_password, logs outcome (never passwords).
+    """
     if not verify_password(payload.current_password, current_user.password):
         logger.warning("change_password_fail user_id=%d reason=wrong_current", current_user.id)
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
