@@ -52,11 +52,12 @@ from .schemas import (
     DeckAddCards, DeckCreate, DeckOut,
     FlashcardCreate, FlashcardOut, FlashcardUpdate, GenerateRequest,
     LoginRequest, QuizCardOut, QuizHistoryOut, QuizStartRequest,
-    QuizSummary, RegisterRequest, UserOut,
-    StudySessionCreate, StudySessionOut,
-    StudySessionResultOut,
+    QuizSummary, RegisterRequest, RemediationQuizRequest, UserOut,
+    StudyGuideOut, StudyGuideRequest, StudySessionCreate, StudySessionOut,
+    StudySessionResultOut, WeakCardOut,
 )
 from .utils import mask_email
+from .weak_cards import rank_weak_cards
 
 logger = logging.getLogger("flashcards.api")
 
@@ -745,6 +746,19 @@ def get_quiz_history(
             score_pct=score_pct,
         ))
     return result
+
+
+# ── Study guide (SCRUM-103+) ──────────────────────────────────────────────────
+
+@app.get("/study-guide/weak-cards", response_model=list[WeakCardOut])
+def get_weak_cards(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SCRUM-103: ranked weak cards from quiz attempts and wrong_count."""
+    rows = rank_weak_cards(db, current_user.id, limit=limit)
+    return [WeakCardOut(**r) for r in rows]
 
 
 # ── Study History ─────────────────────────────────────────────────────────────

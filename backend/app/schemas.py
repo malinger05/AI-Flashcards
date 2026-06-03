@@ -101,6 +101,39 @@ class QuizSummary(BaseModel):
     wrong_count:   int
     score_pct:     int
 
+class WeakCardOut(BaseModel):
+    """SCRUM-103: card ranked for remediation / study guide."""
+    flashcard_id:    int
+    question:        str
+    answer:          str
+    wrong_count:     int
+    last_verdict:    Optional[str] = None
+    last_attempt_at: Optional[datetime] = None
+    grader_reason:   str = ""
+    weakness_score:  float
+
+
+class StudyGuideRequest(BaseModel):
+    """SCRUM-104: optional limit on weak cards sent to Ollama."""
+    limit: int = Field(default=5, ge=1, le=10)
+
+
+class StudyGuideCardTip(BaseModel):
+    flashcard_id: int
+    tips:         list[str]
+    mnemonic:     Optional[str] = None
+
+
+class StudyGuideOut(BaseModel):
+    summary: str
+    cards:   list[StudyGuideCardTip]
+
+
+class RemediationQuizRequest(BaseModel):
+    """SCRUM-105: start quiz from weak cards only."""
+    limit: int = Field(default=10, ge=1, le=20)
+
+
 class QuizHistoryOut(BaseModel):
     """BL-004: Quiz history entry — last 50 sessions, newest first."""
     id:         int
