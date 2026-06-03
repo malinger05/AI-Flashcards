@@ -57,6 +57,7 @@ from .schemas import (
     StudySessionResultOut, WeakCardOut,
 )
 from .utils import mask_email
+from .study_guide import generate_study_guide
 from .weak_cards import rank_weak_cards
 
 logger = logging.getLogger("flashcards.api")
@@ -759,6 +760,78 @@ def get_weak_cards(
     """SCRUM-103: ranked weak cards from quiz attempts and wrong_count."""
     rows = rank_weak_cards(db, current_user.id, limit=limit)
     return [WeakCardOut(**r) for r in rows]
+
+
+@app.post("/study-guide", response_model=StudyGuideOut)
+def create_study_guide(
+    payload: StudyGuideRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SCRUM-104: Ollama-generated tips for the user's weak cards."""
+    weak = rank_weak_cards(db, current_user.id, limit=payload.limit)
+    if not weak:
+        raise HTTPException(
+            status_code=400,
+            detail="No quiz mistakes yet. Complete a quiz first to get a study guide.",
+        )
+    model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    logger.info(
+        "study_guide_start user_id=%d card_count=%d model=%s",
+        current_user.id, len(weak), model,
+    )
+    try:
+        result = generate_study_guide(weak)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        logger.error(
+            "study_guide_fail user_id=%d error=%s",
+            current_user.id, str(exc),
+        )
+        raise HTTPException(status_code=422, detail=f"Study guide failed: {exc}")
+    return StudyGuideOut(**result)
+
+
+@app.post("/quiz/start-remediation", response_model=QuizCardOut)
+def quiz_start_remediation(
+    payload: RemediationQuizRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SCRUM-105: quiz session built only from weak cards."""
+    weak = rank_weak_cards(db, current_user.id, limit=payload.limit)
+    if not weak:
+        raise HTTPException(
+            status_code=400,
+            detail="No weak cards to practice. Miss some quiz answers first.",
+        )
+    cards = (
+        db.query(Flashcard)
+        .filter(
+            Flashcard.user_id == current_user.id,
+            Flashcard.id.in_([w["flashcard_id"] for w in weak]),
+        )
+        .all()
+    )
+    id_order = [w["flashcard_id"] for w in weak]
+    cards.sort(key=lambda c: id_order.index(c.id))
+    ids_str = ",".join(str(c.id) for c in cards)
+    session = QuizSession(flashcard_ids=ids_str, user_id=current_user.id)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    logger.info(
+        "remediation_quiz_start user_id=%d card_count=%d session_id=%d",
+        current_user.id, len(cards), session.id,
+    )
+    return QuizCardOut(
+        session_id=session.id,
+        card_index=0,
+        total_cards=len(cards),
+        flashcard_id=cards[0].id,
+        question=cards[0].question,
+    )
 
 
 # ── Study History ─────────────────────────────────────────────────────────────
