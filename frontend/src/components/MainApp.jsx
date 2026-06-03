@@ -5,6 +5,7 @@ import StudyTab from "./StudyTab";
 import QuizTab from "./QuizTab";
 import SavedTab from "./SavedTab";
 import StatsTab from "./StatsTab";
+import StudyGuideTab from "./StudyGuideTab";
 
 // ── Dark-mode helper ──────────────────────────────────────────────────────────
 function useDarkMode() {
@@ -69,6 +70,7 @@ export default function MainApp({ user, onLogout }) {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => sessionStorage.getItem("ollama_banner_dismissed") === "1",
   );
+  const [remediationQuiz, setRemediationQuiz] = useState(null);
 
   // S3-007: health check on mount
   useEffect(() => {
@@ -258,7 +260,22 @@ export default function MainApp({ user, onLogout }) {
     ? Math.max(...history.map((s) => s.pct))
     : null;
 
-  const TABS = ["generate", "study", "quiz", "saved", "stats"];
+  const TABS = ["generate", "study", "quiz", "guide", "saved", "stats"];
+
+  async function startRemediationQuiz() {
+    try {
+      const res = await apiFetch("/quiz/start-remediation", {
+        method: "POST",
+        body: JSON.stringify({ limit: 10 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Could not start practice quiz.");
+      setRemediationQuiz(data);
+      switchTab("quiz");
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   return (
     <div className="app-shell" onClick={() => setDdOpen(false)}>
@@ -279,7 +296,11 @@ export default function MainApp({ user, onLogout }) {
               className={`nav-btn${tab === t ? " on" : ""}`}
               onClick={() => switchTab(t)}
             >
-              {t === "stats" ? "Stats" : t[0].toUpperCase() + t.slice(1)}
+              {t === "stats"
+                ? "Stats"
+                : t === "guide"
+                  ? "Guide"
+                  : t[0].toUpperCase() + t.slice(1)}
             </button>
           ))}
         </nav>
@@ -445,7 +466,20 @@ export default function MainApp({ user, onLogout }) {
             }}
           />
         )}
-        {tab === "quiz" && <QuizTab savedCards={saved} />}
+        {tab === "quiz" && (
+          <QuizTab
+            savedCards={saved}
+            remediationLaunch={remediationQuiz}
+            onRemediationConsumed={() => setRemediationQuiz(null)}
+            onOpenStudyGuide={() => switchTab("guide")}
+          />
+        )}
+        {tab === "guide" && (
+          <StudyGuideTab
+            ollamaDown={ollamaDown}
+            onPracticeWeak={startRemediationQuiz}
+          />
+        )}
         {tab === "saved" &&
           (loadingCards ? (
             <div
