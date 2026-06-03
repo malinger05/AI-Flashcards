@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../constants";
 
-export default function QuizTab({ savedCards }) {
+export default function QuizTab({
+  savedCards,
+  remediationLaunch,
+  onRemediationConsumed,
+  onOpenStudyGuide,
+}) {
   const [phase, setPhase] = useState("setup");
   const [count, setCount] = useState(10);
   const [useSelected, setUseSelected] = useState(false);
@@ -24,6 +29,21 @@ export default function QuizTab({ savedCards }) {
   useEffect(() => {
     if (phase === "question") inputRef.current?.focus();
   }, [phase, cardIndex]);
+
+  // SCRUM-107: start remediation quiz when launched from Study Guide
+  useEffect(() => {
+    if (!remediationLaunch) return;
+    setSessionId(remediationLaunch.session_id);
+    setQuestion(remediationLaunch.question);
+    setCardIndex(remediationLaunch.card_index);
+    setTotalCards(remediationLaunch.total_cards);
+    setAnswer("");
+    setFeedback(null);
+    setSummary(null);
+    setPhase("question");
+    setErr("");
+    onRemediationConsumed?.();
+  }, [remediationLaunch]);
 
   useEffect(() => {
     function onKey(e) {
@@ -333,6 +353,15 @@ export default function QuizTab({ savedCards }) {
           >
             Try again
           </button>
+          {pct < 70 && onOpenStudyGuide && (
+            <button
+              className="btn btn-violet"
+              style={{ marginRight: 8 }}
+              onClick={onOpenStudyGuide}
+            >
+              Open Study Guide
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={reset}>
             Back to setup
           </button>
