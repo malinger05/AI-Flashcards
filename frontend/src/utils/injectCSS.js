@@ -367,8 +367,11 @@ body {
 .stage.sl { transform:translateX(-130%) rotate(-18deg); opacity:0; pointer-events:none; }
 .fcard { width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform .52s cubic-bezier(.4,0,.2,1); }
 .fcard.flipped { transform:rotateY(180deg); }
-.face { position:absolute; inset:0; backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.25rem; }
+.face { position:absolute; inset:0; -webkit-backface-visibility:hidden; backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.25rem; border-radius:var(--r); }
+.face.front { transform:rotateY(0deg); }
 .face.back { transform:rotateY(180deg); background:var(--teal-d) !important; border-color:var(--teal-dd) !important; }
+/* overflow:hidden on .teal-card breaks 3D flip — answer face stays hidden in WebKit/Chrome */
+.fcard .teal-card { overflow:visible; }
 .taphint { position:absolute; bottom:13px; font-size:.72rem; font-weight:700; color:rgba(255,255,255,.72); }
 .sacts { display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; max-width:520px; margin:0 auto; }
 .sbtn { flex:1; max-width:148px; padding:11px 10px; border-radius:50px; border:2.5px solid; font:inherit; font-size:.85rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:transform .15s, opacity .15s; }

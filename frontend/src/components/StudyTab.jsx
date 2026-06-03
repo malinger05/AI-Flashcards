@@ -199,7 +199,7 @@ export default function StudyTab({ cards, customLabel, dueOnly = false, onSessio
       </div>
       <div
         className={`stage${swipe === "right" ? " sr" : swipe === "left" ? " sl" : ""}`}
-        onClick={flipped ? undefined : flip}
+        onClick={flip}
         onTouchStart={(e) => {
           dragX.current = e.touches[0].clientX;
         }}
@@ -219,7 +219,7 @@ export default function StudyTab({ cards, customLabel, dueOnly = false, onSessio
             <Doodle />
             <div className="inner-box">
               <span className="clbl">Question</span>
-              <p className="ctxt">{card.question}</p>
+              <p className="ctxt">{card.question ?? ""}</p>
             </div>
             {!flipped && <p className="taphint">Tap to flip</p>}
           </div>
@@ -227,12 +227,12 @@ export default function StudyTab({ cards, customLabel, dueOnly = false, onSessio
             <Doodle />
             <div className="inner-box">
               <span className="clbl">Answer</span>
-              <p className="ctxt">{card.answer}</p>
+              <p className="ctxt">{card.answer ?? ""}</p>
             </div>
           </div>
         </div>
       </div>
-      <div className="sacts">
+      <div className="sacts" onClick={(e) => e.stopPropagation()}>
         <button
           className="sbtn w"
           onClick={() => doSwipe("left")}

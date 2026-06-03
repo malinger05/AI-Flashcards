@@ -47,6 +47,16 @@ export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
     }
   }
 
+  const hasSuggestions =
+    guide &&
+    (Boolean(guide.summary) ||
+      (Array.isArray(guide.cards) && guide.cards.length > 0));
+
+  function clearSuggestions() {
+    setGuide(null);
+    setErr("");
+  }
+
   const tipsById = guide
     ? Object.fromEntries(guide.cards.map((c) => [c.flashcard_id, c]))
     : {};
@@ -87,6 +97,17 @@ export default function StudyGuideTab({ ollamaDown, onPracticeWeak }) {
             >
               Practice weak areas
             </button>
+            {hasSuggestions && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={clearSuggestions}
+                disabled={loadingGuide}
+                title="Remove generated tips and summary"
+              >
+                Clear suggestions
+              </button>
+            )}
           </div>
 
           {guide?.summary && (
