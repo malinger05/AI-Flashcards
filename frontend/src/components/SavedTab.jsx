@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import Doodle from "./Doodle";
 import { apiFetch } from "../constants";
+import GenerateOptions from "./GenerateOptions";
 
 // ── Edit Card Modal ───────────────────────────────────────────────────────────
 function EditCardModal({ card, onSave, onClose }) {
@@ -621,6 +622,8 @@ function ImportPanel({ onGenerated }) {
   const fileRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [count, setCount] = useState(10);
+  const [difficulty, setDifficulty] = useState("medium");
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -630,6 +633,8 @@ function ImportPanel({ onGenerated }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("count", String(count));
+      formData.append("difficulty", difficulty);
       const res = await fetch(
         `${window.__API_BASE__ || "http://127.0.0.1:8000"}/generate/file`,
         {
@@ -655,6 +660,12 @@ function ImportPanel({ onGenerated }) {
 
   return (
     <div className="import-panel">
+      <GenerateOptions
+        count={count}
+        difficulty={difficulty}
+        onCountChange={setCount}
+        onDifficultyChange={setDifficulty}
+      />
       <div className="import-inner">
         <span className="import-icon">📄</span>
         <div>
@@ -847,10 +858,22 @@ export default function SavedTab({
                 </button>
                 <button
                   className="btn btn-ghost"
-                  onClick={onExport}
-                  disabled={!cards.length}
+                  onClick={() => {
+                    const toExport =
+                      selCount > 0
+                        ? filtered.filter((c) => selected.has(c.id))
+                        : cards;
+                    onExport?.(toExport);
+                  }}
+                  disabled={
+                    !cards.length ||
+                    (selCount > 0 &&
+                      !filtered.some((c) => selected.has(c.id)))
+                  }
                 >
-                  Export JSON
+                  {selCount > 0
+                    ? `Export selected (${selCount})`
+                    : "Export JSON"}
                 </button>
               </div>
             </div>

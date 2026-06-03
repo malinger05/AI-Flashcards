@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { TabEmpty } from "./TabState";
 
 // ── Mini bar chart ────────────────────────────────────────────────────────────
 function MiniBar({ pct, color }) {
@@ -232,24 +233,11 @@ export default function StatsTab({ history = [], saved = [], streak = 0 }) {
 
   if (totalSessions === 0) {
     return (
-      <div className="tab-pane center-pane">
-        <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}`}</style>
-        <div
-          style={{
-            textAlign: "center",
-            maxWidth: 400,
-            margin: "0 auto",
-            padding: "3rem 1.5rem",
-            animation: "fadeUp .4s ease",
-          }}
-        >
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📊</div>
-          <h2 style={{ fontWeight: 900, color: "var(--ink)", marginBottom: ".5rem" }}>No stats yet</h2>
-          <p style={{ color: "var(--ink3)", fontWeight: 600, lineHeight: 1.6 }}>
-            Complete a study session to start tracking your progress. Your accuracy, streaks, and history will all appear here.
-          </p>
-        </div>
-      </div>
+      <TabEmpty
+        icon="📊"
+        title="No stats yet"
+        message="Complete a study session to start tracking your progress. Your accuracy, streaks, and history will all appear here."
+      />
     );
   }
 

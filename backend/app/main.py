@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, UploadFile, File
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -339,7 +339,11 @@ def generate(
     t0 = time.perf_counter()
 
     try:
-        flashcards = generate_flashcards(payload.text)
+        flashcards = generate_flashcards(
+            payload.text,
+            count=payload.count,
+            difficulty=payload.difficulty,
+        )
     except RuntimeError as exc:
         duration_ms = round((time.perf_counter() - t0) * 1000)
         logger.error(
@@ -367,10 +371,20 @@ def generate(
 @app.post("/generate/file")
 async def generate_from_file(
     file: UploadFile = File(...),
+    count: int = Form(10),
+    difficulty: str = Form("medium"),
     current_user: User = Depends(get_current_user),
 ):
     # BL-007: rate limit (file uploads count against same limit)
     _check_rate_limit(current_user.id)
+
+    if count < 5 or count > 20:
+        raise HTTPException(status_code=422, detail="count must be between 5 and 20")
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(
+            status_code=422,
+            detail="difficulty must be easy, medium, or hard",
+        )
 
     MAX_SIZE = 10 * 1024 * 1024  # 10 MB
     content = await file.read()
@@ -400,10 +414,14 @@ async def generate_from_file(
 
     try:
         if is_pdf:
-            flashcards = generate_flashcards_from_pdf(content)
+            flashcards = generate_flashcards_from_pdf(
+                content, count=count, difficulty=difficulty
+            )
         else:
             media_type = content_type if content_type.startswith("image/") else "image/jpeg"
-            flashcards = generate_flashcards_from_image(content, media_type)
+            flashcards = generate_flashcards_from_image(
+                content, media_type, count=count, difficulty=difficulty
+            )
     except RuntimeError as exc:
         duration_ms = round((time.perf_counter() - t0) * 1000)
         logger.error(
