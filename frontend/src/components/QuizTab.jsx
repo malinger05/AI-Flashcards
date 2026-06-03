@@ -70,6 +70,7 @@ export default function QuizTab({ savedCards }) {
     }
   }
 
+  // SCRUM-92: POST /quiz/answer — backend grades with llama3.2 (verdict + reason in feedback)
   async function submitAnswer() {
     if (!answer.trim()) return;
     setLoading(true);
