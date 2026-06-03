@@ -2,6 +2,9 @@
 logging_config.py — S3-001
 Centralised Python logging for the FlashCards backend.
 Call setup_logging() once at app startup before any route handles traffic.
+
+SCRUM-63 (observability QA): after deploy, confirm startup_complete in logs and that
+Bearer tokens / raw passwords never appear at INFO (see _ScrubFilter below).
 """
 
 import logging

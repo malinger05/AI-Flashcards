@@ -108,6 +108,9 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
     S3-002: Log every request with method, path, status_code, duration_ms,
     request_id, and user_id. /health is logged at DEBUG only.
     5xx responses are logged at ERROR.
+
+    SCRUM-63: manual check — trigger any API route and grep logs for api_request lines
+    with matching X-Request-ID response header.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -163,7 +166,7 @@ app.add_middleware(RequestLogMiddleware)
 
 @app.on_event("startup")
 def on_startup():
-    setup_logging()          # S3-001: logging wired before any route traffic
+    setup_logging()          # S3-001 / SCRUM-63: logging wired before any route traffic
     Base.metadata.create_all(bind=engine)
     run_migrations()
 
@@ -210,6 +213,8 @@ def health_check(db: Session = Depends(get_db)):
     S3-006: Report database and Ollama reachability.
     Response: { status: "ok"|"degraded"|"error", db: "ok"|"error", ollama: "ok"|"unreachable" }
     HTTP 200 for ok/degraded, 503 for error.
+
+    SCRUM-63: manual check — curl /health with Ollama up (ok) and stopped (degraded).
     """
     # DB probe
     db_status = "ok"
